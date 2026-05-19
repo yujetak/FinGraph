@@ -26,10 +26,6 @@ from neo4j_graphrag.retrievers import (
 
 dotenv.load_dotenv()
 
-# ──────────────────────────────────────────
-# 1. DB / LLM / Embedder 초기화
-# ──────────────────────────────────────────
-
 
 def get_neo4j_driver() -> neo4j.Driver:
     uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
@@ -46,19 +42,10 @@ def get_neo4j_driver() -> neo4j.Driver:
             
     username = os.getenv("NEO4J_USERNAME", "neo4j")
     password = os.getenv("NEO4J_PASSWORD", "password")
-    try:
-        d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
-        d.verify_connectivity()
-        return d
-    except Exception as e:
-        import sys
-        if "pytest" in sys.modules or os.getenv("GITHUB_ACTIONS") == "true":
-            print(f"⚠️ [TEST/CI ENVIRONMENT] Neo4j connection failed at import time: {e}. (Proceeding with dummy None driver)")
-            return None
-        raise e
+    d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
+    d.verify_connectivity()
+    return d
 
-
-driver = get_neo4j_driver()
 
 rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
 embedder = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -66,17 +53,9 @@ embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 INDEX_NAME = "content_vector_index"
 
 # ──────────────────────────────────────────
-# 2. Retriever 세 종류 초기화
+# 2. Retriever 관련 상수 및 설정
 # ──────────────────────────────────────────
 
-# (1) 본문 청크 의미 유사도 검색
-vector_retriever = VectorRetriever(
-    driver=driver,
-    index_name=INDEX_NAME,
-    embedder=embedder,
-)
-
-# (2) 벡터 검색 후 그래프 탐색 (기업·기술·서비스 함께 반환)
 _retrieval_query = """
 MATCH (content:Content)<-[:HAS_CHUNK]-(article:Article)
 OPTIONAL MATCH (article)-[:MENTIONS]->(company:AICompany)
@@ -96,16 +75,8 @@ ORDER BY article.published_date DESC
 LIMIT 3
 """
 
-vector_cypher_retriever = VectorCypherRetriever(
-    driver=driver,
-    index_name=INDEX_NAME,
-    retrieval_query=_retrieval_query,
-    embedder=embedder,
-)
 
-
-# (3) 자연어 → Cypher 자동 변환 검색
-def _get_schema() -> str:
+def _get_schema(driver: neo4j.Driver) -> str:
     with driver.session() as s:
         nodes = s.run(
             "CALL db.schema.nodeTypeProperties() "
@@ -151,35 +122,9 @@ CYPHER QUERY:
     LIMIT 3""",
 ]
 
-text2cypher_retriever = Text2CypherRetriever(
-    driver=driver,
-    llm=rag_llm,
-    neo4j_schema=_get_schema(),
-    examples=_examples,
-)
-
 # ──────────────────────────────────────────
 # 3. ToolsRetriever + GraphRAG 조립
 # ──────────────────────────────────────────
-
-tools_retriever = ToolsRetriever(
-    driver=driver,
-    llm=rag_llm,
-    tools=[
-        vector_retriever.convert_to_tool(
-            name="vector_retriever",
-            description="뉴스 본문의 의미(내용) 유사도 기반 검색. AI 기술·서비스 관련 텍스트를 찾을 때 사용.",
-        ),
-        vector_cypher_retriever.convert_to_tool(
-            name="vectorcypher_retriever",
-            description="벡터 검색 후 해당 기사에서 언급된 기업·기술·서비스 그래프를 함께 반환. 기업 AI 트렌드 분석에 최적.",
-        ),
-        text2cypher_retriever.convert_to_tool(
-            name="text2cypher_retriever",
-            description="자연어를 Cypher로 변환. 특정 기업 서비스 목록, 기술 보유 기업 등 구조적 질의에 사용.",
-        ),
-    ],
-)
 
 from typing import Any
 
@@ -203,13 +148,6 @@ class HybridFallbackRetriever(Retriever):
         if not res or not res.items:
             return self.fallback_retriever.search(query_text=query_text, **kwargs)
         return res
-
-
-# 하이브리드 검색 인스턴스 장착
-hybrid_retriever = HybridFallbackRetriever(
-    tools_retriever=tools_retriever,
-    fallback_retriever=vector_cypher_retriever,
-)
 
 
 class CustomRagTemplate(RagTemplate):
@@ -238,9 +176,76 @@ _prompt_template = CustomRagTemplate(
     expected_inputs=["context", "query_text"]
 )
 
-# app.py에서 이 객체를 직접 import하여 사용합니다.
-graphrag = GraphRAG(
-    llm=rag_llm,
-    retriever=hybrid_retriever,
-    prompt_template=_prompt_template,
-)
+
+class LazyGraphRAG:
+    """임포트 시점에 DB 연결을 방지하고 실제 호출될 때 GraphRAG 인스턴스를 초기화하는 지연 평가 프록시"""
+    def __init__(self) -> None:
+        self._graphrag = None
+
+    def _init_once(self) -> None:
+        if self._graphrag is not None:
+            return
+            
+        driver = get_neo4j_driver()
+        
+        vector_retriever = VectorRetriever(
+            driver=driver,
+            index_name=INDEX_NAME,
+            embedder=embedder,
+        )
+        
+        vector_cypher_retriever = VectorCypherRetriever(
+            driver=driver,
+            index_name=INDEX_NAME,
+            retrieval_query=_retrieval_query,
+            embedder=embedder,
+        )
+        
+        text2cypher_retriever = Text2CypherRetriever(
+            driver=driver,
+            llm=rag_llm,
+            neo4j_schema=_get_schema(driver),
+            examples=_examples,
+        )
+        
+        tools_retriever = ToolsRetriever(
+            driver=driver,
+            llm=rag_llm,
+            tools=[
+                vector_retriever.convert_to_tool(
+                    name="vector_retriever",
+                    description="뉴스 본문의 의미(내용) 유사도 기반 검색. AI 기술·서비스 관련 텍스트를 찾을 때 사용.",
+                ),
+                vector_cypher_retriever.convert_to_tool(
+                    name="vectorcypher_retriever",
+                    description="벡터 검색 후 해당 기사에서 언급된 기업·기술·서비스 그래프를 함께 반환. 기업 AI 트렌드 분석에 최적.",
+                ),
+                text2cypher_retriever.convert_to_tool(
+                    name="text2cypher_retriever",
+                    description="자연어를 Cypher로 변환. 특정 기업 서비스 목록, 기술 보유 기업 등 구조적 질의에 사용.",
+                ),
+            ],
+        )
+        
+        hybrid_retriever = HybridFallbackRetriever(
+            tools_retriever=tools_retriever,
+            fallback_retriever=vector_cypher_retriever,
+        )
+        
+        self._graphrag = GraphRAG(
+            llm=rag_llm,
+            retriever=hybrid_retriever,
+            prompt_template=_prompt_template,
+        )
+
+    def search(self, *args: Any, **kwargs: Any) -> Any:
+        self._init_once()
+        return self._graphrag.search(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        self._init_once()
+        return getattr(self._graphrag, name)
+
+
+# app.py에서 이 객체를 직접 import하여 사용합니다 (이때는 DB 연결을 시도하지 않음).
+graphrag = LazyGraphRAG()

@@ -42,19 +42,12 @@ def get_neo4j_driver() -> neo4j.Driver:
             
     username = os.getenv("NEO4J_USERNAME", "neo4j")
     password = os.getenv("NEO4J_PASSWORD", "password")
-    try:
-        d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
-        d.verify_connectivity()
-        return d
-    except Exception as e:
-        import sys
-        if "pytest" in sys.modules or os.getenv("GITHUB_ACTIONS") == "true":
-            print(f"⚠️ [TEST/CI ENVIRONMENT] Neo4j connection failed at import time: {e}. (Proceeding with dummy None driver)")
-            return None
-        raise e
+    d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
+    d.verify_connectivity()
+    return d
 
 
-driver = get_neo4j_driver()
+driver = None
 
 chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
@@ -265,6 +258,9 @@ def is_article_loaded(tx, aid: str) -> bool:
 
 
 def main() -> None:
+    global driver
+    driver = get_neo4j_driver()
+    
     # 1. 모든 엑셀 파일 로드 후 병합 및 고유 기사만 필터링
     xlsx_files = sorted(glob.glob("Articles_*.xlsx"))
     if not xlsx_files:

@@ -160,18 +160,18 @@ def get_db_stats() -> Dict[str, Any]:
             if res_techs:
                 stats["technologies"] = res_techs["cnt"]
 
-            # 2. 기술 목록 & 설명 조회 (상위 5개)
+            # 2. 기술 목록 & 설명 조회 (상위 25개)
             res_tech_list = session.run(
                 "MATCH (t:AITechnology) "
-                "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 5"
+                "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 25"
             )
             stats["techs_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_tech_list]
 
-            # 3. 최근 기사 목록 조회 (최근 3개)
+            # 3. 최근 기사 목록 조회 (최근 15개)
             res_art_list = session.run(
                 "MATCH (a:Article) "
                 "RETURN a.title as title, a.published_date as date, a.url as url "
-                "ORDER BY a.published_date DESC LIMIT 3"
+                "ORDER BY a.published_date DESC LIMIT 15"
             )
             stats["recent_articles"] = [
                 {"title": r["title"], "date": r["date"], "url": r["url"]}
@@ -378,7 +378,7 @@ body {
 
 /* 최근 뉴스 피드 클릭 가능한 카드 레이아웃 */
 .news-feed-container {
-    max-height: 150px;
+    max-height: 350px;
     overflow-y: auto;
     border: 1px solid rgba(196, 195, 236, 0.35);
     border-radius: 6px;

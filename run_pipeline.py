@@ -59,5 +59,6 @@ def run_test():
     else:
         print("\n⏭️ AI 관련 기사가 아니므로 그래프 상세 분석 및 벡터 적재를 건너뜁니다.")
 
+
 if __name__ == "__main__":
     run_test()

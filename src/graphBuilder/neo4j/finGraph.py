@@ -26,11 +26,28 @@ from neo4j_graphrag.llm import OpenAILLM
 
 dotenv.load_dotenv()
 
-URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-username = os.getenv("NEO4J_CLIENT_ID") or os.getenv("NEO4J_USERNAME") or "neo4j"
-password = os.getenv("NEO4J_CLIENT_SECRET") or os.getenv("NEO4J_PASSWORD") or "password"
-AUTH = (username, password)
-driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
+
+def get_neo4j_driver() -> neo4j.Driver:
+    uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
+    client_id = os.getenv("NEO4J_CLIENT_ID")
+    client_secret = os.getenv("NEO4J_CLIENT_SECRET")
+    
+    if client_id and client_secret:
+        try:
+            d = neo4j.GraphDatabase.driver(uri, auth=(client_id, client_secret))
+            d.verify_connectivity()
+            return d
+        except Exception:
+            pass
+            
+    username = os.getenv("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+    d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
+    d.verify_connectivity()
+    return d
+
+
+driver = get_neo4j_driver()
 
 chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})

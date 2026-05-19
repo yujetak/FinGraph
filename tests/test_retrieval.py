@@ -10,6 +10,7 @@ has_credentials = (
     os.getenv("NEO4J_URI") is not None
 )
 
+
 @pytest.mark.skipif(
     not has_credentials, 
     reason="OpenAI API Key 또는 Neo4j 연결 환경변수가 없으므로 통합 테스트를 건너뜁니다."

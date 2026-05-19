@@ -20,15 +20,28 @@ import dotenv
 
 dotenv.load_dotenv()
 
+
 # ── 0. 그래프 구성 사전 점검 (Neo4j 노드/관계 통계) ─────────────────────────
 def check_graph_structure():
     import neo4j
 
     uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-    username = os.getenv("NEO4J_CLIENT_ID") or os.getenv("NEO4J_USERNAME") or "neo4j"
-    password = os.getenv("NEO4J_CLIENT_SECRET") or os.getenv("NEO4J_PASSWORD") or "password"
-    auth = (username, password)
-    driver = neo4j.GraphDatabase.driver(uri, auth=auth)
+    client_id = os.getenv("NEO4J_CLIENT_ID")
+    client_secret = os.getenv("NEO4J_CLIENT_SECRET")
+    
+    driver = None
+    if client_id and client_secret:
+        try:
+            driver = neo4j.GraphDatabase.driver(uri, auth=(client_id, client_secret))
+            driver.verify_connectivity()
+        except Exception:
+            driver = None
+            
+    if not driver:
+        username = os.getenv("NEO4J_USERNAME", "neo4j")
+        password = os.getenv("NEO4J_PASSWORD", "password")
+        driver = neo4j.GraphDatabase.driver(uri, auth=(username, password))
+        driver.verify_connectivity()
 
     print("\n" + "=" * 60)
     print("📊 [사전 점검] Neo4j 그래프 구성 현황")

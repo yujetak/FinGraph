@@ -22,6 +22,7 @@ dotenv.load_dotenv()
 # 1. LangGraph 챗봇 State 정의
 # ──────────────────────────────────────────
 
+
 class ChatState(TypedDict):
     question: str        # 사용자 질문
     history: List[dict]  # 대화 히스토리 [{"role": "user"/"assistant", "content": "..."}]

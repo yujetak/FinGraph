@@ -79,8 +79,9 @@ def test_portfolio_showcase_aggregation_query():
     assert any(indicator in response.answer for indicator in ["1.", "TOP", "기사", "출처"]) # 일종의 skill
 ```
 
-## 자동 검사
+## 자동 검사 및 런타임 에러 방지
 - 로컬 개발 환경에서 커밋하기 전, 반드시 터미널에 `ruff check .` 및 `mypy src tests --ignore-missing-imports` 명령어를 직접 실행하여 린트 및 엄격한 타입 오류를 확실하게 확인하고 모두 고칠 것 (오류가 남아있는 상태로 커밋 금지).
+- **런타임 Auth/연결 에러 방지**: 린트/타입 검사 후 반드시 `python tests/smoke_test_rag.py`를 로컬에서 실행하여 `neo4j.exceptions.AuthError` 등의 런타임 에러가 터지지 않고 완벽히 RAG 결과가 출력되는지(DB 정상 접속) 현장 점검(Smoke Test) 후 푸시할 것.
 - 커밋 전 `pre-commit` 자동 실행
 - `ruff`, `mypy` 검사 통과 필수
 - 검사 실패 시 커밋 불가

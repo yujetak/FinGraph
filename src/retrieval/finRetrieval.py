@@ -30,11 +30,28 @@ dotenv.load_dotenv()
 # 1. DB / LLM / Embedder 초기화
 # ──────────────────────────────────────────
 
-URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-username = os.getenv("NEO4J_CLIENT_ID") or os.getenv("NEO4J_USERNAME") or "neo4j"
-password = os.getenv("NEO4J_CLIENT_SECRET") or os.getenv("NEO4J_PASSWORD") or "password"
-AUTH = (username, password)
-driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
+
+def get_neo4j_driver() -> neo4j.Driver:
+    uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
+    client_id = os.getenv("NEO4J_CLIENT_ID")
+    client_secret = os.getenv("NEO4J_CLIENT_SECRET")
+    
+    if client_id and client_secret:
+        try:
+            d = neo4j.GraphDatabase.driver(uri, auth=(client_id, client_secret))
+            d.verify_connectivity()
+            return d
+        except Exception:
+            pass  # Fallback to Username/Password
+            
+    username = os.getenv("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+    d = neo4j.GraphDatabase.driver(uri, auth=(username, password))
+    d.verify_connectivity()
+    return d
+
+
+driver = get_neo4j_driver()
 
 rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
 embedder = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -180,17 +197,20 @@ class HybridFallbackRetriever(Retriever):
             return self.fallback_retriever.search(query_text=query_text, **kwargs)
         return res
 
+
 # 하이브리드 검색 인스턴스 장착
 hybrid_retriever = HybridFallbackRetriever(
     tools_retriever=tools_retriever,
     fallback_retriever=vector_cypher_retriever,
 )
 
+
 class CustomRagTemplate(RagTemplate):
     EXPECTED_INPUTS = ["context", "query_text"]
 
     def format(self, query_text: str, context: str, examples: str = "") -> str:
         return self._format(query_text=query_text, context=context)
+
 
 _prompt_template = CustomRagTemplate(
     template="""당신은 AI 기술 트렌드 분석 전문가입니다.

@@ -140,8 +140,6 @@ def get_db_stats() -> Dict[str, Any]:
         "articles": 0,
         "companies": 0,
         "technologies": 0,
-        "relationships": 0,
-        "companies_list": [],
         "techs_list": [],
         "recent_articles": [],
     }
@@ -149,7 +147,7 @@ def get_db_stats() -> Dict[str, Any]:
         from src.retrieval.finRetrieval import get_neo4j_driver
         driver = get_neo4j_driver()
         with driver.session() as session:
-            # 1. 각 노드 및 에지 갯수 조회
+            # 1. 각 노드별 갯수 조회
             res_articles = session.run("MATCH (a:Article) RETURN count(a) as cnt").single()
             if res_articles:
                 stats["articles"] = res_articles["cnt"]
@@ -162,17 +160,7 @@ def get_db_stats() -> Dict[str, Any]:
             if res_techs:
                 stats["technologies"] = res_techs["cnt"]
 
-            res_edges = session.run("MATCH ()-[r]->() RETURN count(r) as cnt").single()
-            if res_edges:
-                stats["relationships"] = res_edges["cnt"]
-
-            # 2. 기업 및 기술 목록 & 설명 조회 (상위 5개)
-            res_comp_list = session.run(
-                "MATCH (c:AICompany) "
-                "RETURN c.name as name, COALESCE(c.description, '최근 주목받는 AI 핵심 기업') as desc LIMIT 5"
-            )
-            stats["companies_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_comp_list]
-
+            # 2. 기술 목록 & 설명 조회 (상위 5개)
             res_tech_list = session.run(
                 "MATCH (t:AITechnology) "
                 "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 5"
@@ -196,19 +184,7 @@ def get_db_stats() -> Dict[str, Any]:
 
 def build_stats_html(stats: Dict[str, Any]) -> str:
     """조회된 지식 그래프 통계 정보들을 바탕으로 미려하고 컴팩트한 대시보드용 HTML을 생성합니다."""
-    # 1. 기업 리스트 HTML 생성
-    comp_html: str = ""
-    for c in stats.get("companies_list", []):
-        comp_html += f"""
-        <div class="definition-item">
-            <span class="definition-name">🏢 {c['name']}</span>
-            <span class="definition-desc">{c['desc']}</span>
-        </div>
-        """
-    if not comp_html:
-        comp_html = '<div style="font-size:10px; color:#94a3b8;">등록된 기업이 없습니다.</div>'
-
-    # 2. 기술 리스트 HTML 생성
+    # 1. 기술 리스트 HTML 생성
     tech_html: str = ""
     for t in stats.get("techs_list", []):
         tech_html += f"""
@@ -218,9 +194,9 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         </div>
         """
     if not tech_html:
-        tech_html = '<div style="font-size:10px; color:#94a3b8;">등록된 기술이 없습니다.</div>'
+        tech_html = '<div style="font-size:12px; color:#94a3b8;">등록된 기술이 없습니다.</div>'
 
-    # 3. 최근 기사 리스트 HTML 생성 (최대 3개)
+    # 2. 최근 기사 리스트 HTML 생성 (최대 3개)
     news_list_html: str = ""
     for a in stats.get("recent_articles", []):
         title = a["title"]
@@ -234,7 +210,7 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         </div>
         """
     if not news_list_html:
-        news_list_html = '<div style="font-size:10px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
+        news_list_html = '<div style="font-size:12px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
 
     node_count = stats['companies'] + stats['technologies']
 
@@ -243,10 +219,10 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         <!-- Ambient background elements for beautiful glass effects -->
         <div class="ambient-glow"></div>
         
-        <div style="font-size: 14px; font-weight: 850; color: #5b5b7f; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; letter-spacing: -0.02em;">
+        <div style="font-size: 16px; font-weight: 850; color: #5b5b7f; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; letter-spacing: -0.02em;">
             📊 <span>FinGraph AI Terminal</span>
         </div>
-        <p style="font-size: 9px; color: #47464e; margin-top: -2px; margin-bottom: 10px; font-weight: 500;">GraphRAG 실시간 분석 엔진</p>
+        <p style="font-size: 11px; color: #47464e; margin-top: -2px; margin-bottom: 12px; font-weight: 500;">GraphRAG 실시간 분석 엔진</p>
         
         <div class="stats-grid">
             <div class="stat-card">
@@ -257,25 +233,9 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
                 <div class="stat-lbl">🧬 지식 노드</div>
                 <div class="stat-val">{node_count}개</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-lbl">⛓️ 관계 연결</div>
-                <div class="stat-val">{stats['relationships']}개</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-lbl">⚡ 엔진 상태</div>
-                <div class="stat-val" style="color: #4d6075; display: flex; align-items: center; justify-content: center; gap: 3px;">
-                    <span style="width: 6px; height: 6px; background-color: #5b5b7f; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #5b5b7f;"></span>
-                    Active
-                </div>
-            </div>
         </div>
         
-        <div class="section-subtitle">🏢 주요 분석 기업 및 개요</div>
-        <div class="definition-list">
-            {comp_html}
-        </div>
-        
-        <div class="section-subtitle">💡 주요 핵심 기술 및 정의</div>
+        <div class="section-subtitle">💡 핵심 AI 기술 사전</div>
         <div class="definition-list">
             {tech_html}
         </div>
@@ -330,7 +290,7 @@ body {
     -webkit-backdrop-filter: blur(24px) !important;
     border: 1px solid rgba(196, 195, 236, 0.45) !important;
     border-radius: 12px;
-    padding: 12px;
+    padding: 16px;
     box-shadow: 0 4px 12px -2px rgba(88, 89, 125, 0.05) !important;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -344,23 +304,23 @@ body {
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 15px;
 }
 .stat-card {
     background: rgba(255, 255, 255, 0.7);
     border: 1px solid rgba(196, 195, 236, 0.4);
-    border-radius: 6px;
-    padding: 5px 6px;
+    border-radius: 8px;
+    padding: 10px;
     text-align: center;
     box-shadow: 0 1px 3px rgba(88, 89, 125, 0.02);
     transition: all 0.25s ease-in-out;
 }
 .stat-card:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.9);
     border-color: rgba(91, 91, 127, 0.6);
-    box-shadow: 0 4px 8px -2px rgba(88, 89, 125, 0.1);
+    box-shadow: 0 4px 12px -2px rgba(88, 89, 125, 0.1);
 }
 .dark .stat-card {
     background: rgba(30, 41, 59, 0.7);
@@ -371,38 +331,38 @@ body {
     border-color: rgba(129, 140, 248, 0.5);
 }
 .stat-val {
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 16px !important;
+    font-weight: 850 !important;
     color: #5b5b7f; /* 투명 퍼플 에디션 포인트 색상 */
-    margin-top: 1px;
+    margin-top: 2px;
 }
 .dark .stat-val {
     color: #c4c3ec;
 }
 .stat-lbl {
-    font-size: 9px;
+    font-size: 11px !important;
     color: #47464e;
-    font-weight: 500;
+    font-weight: 600;
 }
 .dark .stat-lbl {
     color: #94a3b8;
 }
 
-/* 주요 기업 및 기술 정의 리스트 글래스모피즘 스타일 */
+/* 주요 기술 정의 리스트 글래스모피즘 스타일 */
 .definition-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 6px;
+    margin-bottom: 12px;
 }
 .definition-item {
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(196, 195, 236, 0.3);
-    border-radius: 5px;
-    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(196, 195, 236, 0.35);
+    border-radius: 6px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     box-shadow: 0 1px 2px rgba(88, 89, 125, 0.01);
     transition: all 0.2s ease;
 }
@@ -419,20 +379,20 @@ body {
     border-color: rgba(129, 140, 248, 0.4);
 }
 .definition-name {
-    font-size: 10px;
+    font-size: 13px !important;
     font-weight: 800;
     color: #5b5b7f; /* 퍼플 포인트 */
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
 }
 .dark .definition-name {
     color: #c4c3ec;
 }
 .definition-desc {
-    font-size: 9px;
+    font-size: 11px !important;
     color: #47464e;
-    line-height: 1.3;
+    line-height: 1.4;
 }
 .dark .definition-desc {
     color: #cbd5e1;
@@ -440,11 +400,11 @@ body {
 
 /* 최근 뉴스 타임라인 및 스크롤바 스타일 */
 .news-feed-container {
-    max-height: 100px;
+    max-height: 140px;
     overflow-y: auto;
     border: 1px solid rgba(196, 195, 236, 0.35);
-    border-radius: 5px;
-    padding: 5px;
+    border-radius: 6px;
+    padding: 8px;
     background: rgba(255, 255, 255, 0.5);
 }
 .dark .news-feed-container {
@@ -467,20 +427,20 @@ body {
 }
 
 .news-item {
-    border-left: 2px solid #5b5b7f; /* 퍼플 포인트 */
-    padding-left: 6px;
-    margin-bottom: 5px;
+    border-left: 3px solid #5b5b7f; /* 퍼플 포인트 */
+    padding-left: 8px;
+    margin-bottom: 8px;
     position: relative;
 }
 .news-item:last-child {
     margin-bottom: 0;
 }
 .news-title {
-    font-size: 10px;
+    font-size: 12px !important;
     font-weight: 600;
     color: #1b1c1a;
     text-decoration: none;
-    line-height: 1.3;
+    line-height: 1.4;
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -497,19 +457,19 @@ body {
     color: #c4c3ec;
 }
 .news-meta {
-    font-size: 8px;
+    font-size: 10px !important;
     color: #94a3b8;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 
 /* 서브타이틀 헤더 스타일 */
 .section-subtitle {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 13px !important;
+    font-weight: 750;
     color: #1b1c1a;
-    margin: 8px 0 4px 0;
+    margin: 15px 0 6px 0;
     border-bottom: 1px solid rgba(196, 195, 236, 0.35);
-    padding-bottom: 3px;
+    padding-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -517,6 +477,49 @@ body {
 .dark .section-subtitle {
     color: #f8fafc;
     border-color: rgba(129, 140, 248, 0.2);
+}
+
+/* 2x2 grid layout for chatbot example buttons (Stitch Action Grid style) */
+[class*="examples"], .gr-samples-wrapper, .examples-container {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+    background: transparent !important;
+    border: none !important;
+}
+[class*="examples"] button {
+    text-align: left !important;
+    padding: 14px 18px !important;
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(196, 195, 236, 0.5) !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #47464e !important;
+    line-height: 1.4 !important;
+    box-shadow: 0 2px 5px rgba(88, 89, 125, 0.03) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 54px !important;
+    cursor: pointer !important;
+}
+.dark [class*="examples"] button {
+    background: rgba(30, 41, 59, 0.75) !important;
+    border-color: rgba(129, 140, 248, 0.25) !important;
+    color: #cbd5e1 !important;
+}
+[class*="examples"] button:hover {
+    transform: translateY(-2px) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: #5b5b7f !important;
+    box-shadow: 0 6px 12px rgba(91, 91, 127, 0.15) !important;
+}
+.dark [class*="examples"] button:hover {
+    background: rgba(30, 41, 59, 0.95) !important;
+    border-color: rgba(129, 140, 248, 0.6) !important;
 }
 
 /* 챗봇 버튼 퍼플 포인트 스타일 (흰색으로 안 보이던 현상 해결) */
@@ -583,6 +586,7 @@ interface_kwargs = {
         placeholder="분석하고 싶은 내용을 자연어로 입력해주세요...",
         container=False,
         scale=7,
+        submit_btn="전송 📤",
     ),
     "title": "FinGraph — GraphRAG AI Terminal",
     "description": "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.",
@@ -630,14 +634,14 @@ with gr.Blocks(**blocks_kwargs) as demo:
     """)
     
     with gr.Row():
-        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴)
-        with gr.Column(scale=1, min_width=300):
+        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 반반 (50/50) split을 위해 scale=1 설정
+        with gr.Column(scale=1, min_width=450):
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
             
-        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어
-        with gr.Column(scale=3):
+        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 반반 (50/50) split을 위해 scale=1 설정
+        with gr.Column(scale=1, min_width=450):
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">

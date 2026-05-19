@@ -230,16 +230,16 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
                 <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">GPT-4o</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">🧬 검색 모드</div>
-                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">Hybrid (Graph+Vector)</div>
+                <div class="stat-lbl">🏢 대상 회사</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">{stats['companies']}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">⚡ 응답 방식</div>
-                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">Streaming</div>
+                <div class="stat-lbl">🔑 뉴스 키워드</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">{stats['technologies']}개</div>
             </div>
             <div class="stat-card">
                 <div class="stat-lbl">🔐 DB 연결</div>
-                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #10b981;">AuraDB (Active)</div>
+                <div class="stat-val" style="font-size: 12px !important; font-weight: 800 !important; color: #0d9488; margin-top: 3px;"><span style="background: rgba(13, 148, 136, 0.12); padding: 2px 6px; border-radius: 5px; display: inline-block;">Active</span></div>
             </div>
         </div>
 
@@ -472,21 +472,24 @@ body {
     margin-top: 2px;
 }
 
-/* 서브타이틀 헤더 스타일 */
+/* 서브타이틀 헤더 스타일 (연한 에메랄드/테일 배경 + 딥 테일 글씨) */
 .section-subtitle {
     font-size: 13px !important;
-    font-weight: 750;
-    color: #1b1c1a;
-    margin: 15px 0 6px 0;
-    border-bottom: 1px solid rgba(196, 195, 236, 0.35);
-    padding-bottom: 4px;
+    font-weight: 800;
+    color: #0f766e !important; /* 딥 테일 글씨 */
+    background: rgba(20, 184, 166, 0.1) !important; /* 연한 테일 글래스 배경 */
+    margin: 18px 0 8px 0;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    border-left: 3px solid #14b8a6 !important; /* 선명한 테일 세로선 */
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 .dark .section-subtitle {
-    color: #f8fafc;
-    border-color: rgba(129, 140, 248, 0.2);
+    color: #99f6e4 !important;
+    background: rgba(20, 184, 166, 0.2) !important;
+    border-left-color: #2dd4bf !important;
 }
 
 /* 2x2 grid layout for chatbot example buttons (Stitch Action Grid style) */
@@ -502,54 +505,62 @@ body {
 [class*="examples"] button {
     text-align: left !important;
     padding: 14px 18px !important;
-    background: rgba(255, 255, 255, 0.75) !important;
-    border: 1px solid rgba(196, 195, 236, 0.5) !important;
-    border-radius: 8px !important;
+    background: #f0fdf4 !important; /* 싱그러운 민트/연그린 배경 */
+    border: 1px solid #86efac !important; /* 라이트 에메랄드 테두리 */
+    border-radius: 10px !important;
     font-size: 12px !important;
-    font-weight: 600 !important;
-    color: #47464e !important;
+    font-weight: 750 !important;
+    color: #0f766e !important; /* 깊이 있는 테일 그린 글씨 */
     line-height: 1.4 !important;
-    box-shadow: 0 2px 5px rgba(88, 89, 125, 0.03) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 3px 6px rgba(20, 184, 166, 0.05) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     white-space: normal !important;
     height: auto !important;
     min-height: 54px !important;
     cursor: pointer !important;
 }
 .dark [class*="examples"] button {
-    background: rgba(30, 41, 59, 0.75) !important;
-    border-color: rgba(129, 140, 248, 0.25) !important;
-    color: #cbd5e1 !important;
+    background: rgba(20, 184, 166, 0.1) !important;
+    border-color: rgba(45, 212, 191, 0.3) !important;
+    color: #99f6e4 !important;
 }
 [class*="examples"] button:hover {
     transform: translateY(-2px) !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-    border-color: #5b5b7f !important;
-    box-shadow: 0 6px 12px rgba(91, 91, 127, 0.15) !important;
+    background: #dcfce7 !important; /* 호버 시 약간 더 짙은 민트 */
+    border-color: #4ade80 !important;
+    color: #15803d !important;
+    box-shadow: 0 6px 12px rgba(20, 184, 166, 0.12) !important;
 }
 .dark [class*="examples"] button:hover {
-    background: rgba(30, 41, 59, 0.95) !important;
-    border-color: rgba(129, 140, 248, 0.6) !important;
+    background: rgba(20, 184, 166, 0.25) !important;
+    border-color: #2dd4bf !important;
+    color: #ffffff !important;
 }
 
-/* 챗봇 버튼 다크 슬레이트 스타일 (보라색 제거 및 세련된 네이비/슬레이트 통일) */
+/* 챗봇 버튼 확실한 블루 포인트 스타일 (전송 버튼 분리 및 이미지 속 파란 서클 컬러 100% 동기화) */
 button.primary, 
 .primary-btn, 
 button.lg.primary, 
 button.sm.primary,
-button.variant-primary {
-    background-color: #334155 !important;
+button.variant-primary,
+button[class*="submit-btn"],
+[data-testid="submit-button"] {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important; /* 선명한 오션 블루 그라데이션 */
     color: white !important;
-    font-weight: 800 !important;
+    font-weight: 850 !important;
     border: none !important;
-    box-shadow: 0 4px 6px rgba(51, 65, 85, 0.15) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2) !important;
     transition: all 0.2s ease-in-out !important;
+    cursor: pointer !important;
 }
 button.primary:hover, 
 .primary-btn:hover, 
-button.variant-primary:hover {
-    background-color: #1e293b !important;
-    box-shadow: 0 6px 12px rgba(51, 65, 85, 0.25) !important;
+button.variant-primary:hover,
+button[class*="submit-btn"]:hover,
+[data-testid="submit-button"]:hover {
+    background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%) !important;
+    box-shadow: 0 6px 12px rgba(37, 99, 235, 0.35) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -702,11 +713,8 @@ with gr.Blocks(**blocks_kwargs) as demo:
     # 1. 상단 글로벌 네비게이션 바 (GNB)
     gr.HTML("""
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(196, 195, 236, 0.45); background-color: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); margin: -20px -20px 20px -20px;">
-        <div style="font-size: 20px; font-weight: 900; color: #5b5b7f; display: flex; align-items: center; gap: 12px;">
-            FinGraph <span style="font-size: 14px; font-weight: 600; color: #5b5b7f;">GraphRAG Enhanced AI Terminal</span>
-        </div>
-        <div style="display: flex; gap: 18px; color: #5b5b7f; font-size: 18px; cursor: pointer;">
-            <span>🔔</span> <span>⚙️</span> <span>👤</span>
+        <div style="font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 12px;">
+            FinGraph <span style="font-size: 14px; font-weight: 700; color: #475569;">GraphRAG Enhanced AI Terminal</span>
         </div>
     </div>
     """)
@@ -723,8 +731,8 @@ with gr.Blocks(**blocks_kwargs) as demo:
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">
-                <h2 style="font-size: 18px; font-weight: 800; color: #5b5b7f; margin-bottom: 5px;">FinGraph — GraphRAG AI Terminal</h2>
-                <p style="color: #47464e; font-size: 13px;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
+                <h2 style="font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px;">FinGraph — GraphRAG AI Terminal</h2>
+                <p style="color: #475569; font-size: 13px; font-weight: 500;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
             </div>
             """)
             

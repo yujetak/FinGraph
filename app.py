@@ -134,12 +134,13 @@ def get_db_stats() -> Dict[str, Any]:
     """Neo4j 데이터베이스로부터 실시간 지식 그래프 통계 및 요약을 안전하게 조회합니다.
 
     Returns:
-        Dict[str, Any]: 기사 건수, 기업 수, 기술 수, 세부 설명 목록
+        Dict[str, Any]: 기사 건수, 기업 수, 기술 수, 관계 수, 세부 설명 목록
     """
     stats: Dict[str, Any] = {
         "articles": 0,
         "companies": 0,
         "technologies": 0,
+        "relationships": 0,
         "companies_list": [],
         "techs_list": [],
         "recent_articles": [],
@@ -148,7 +149,7 @@ def get_db_stats() -> Dict[str, Any]:
         from src.retrieval.finRetrieval import get_neo4j_driver
         driver = get_neo4j_driver()
         with driver.session() as session:
-            # 1. 각 노드별 갯수 조회
+            # 1. 각 노드 및 에지 갯수 조회
             res_articles = session.run("MATCH (a:Article) RETURN count(a) as cnt").single()
             if res_articles:
                 stats["articles"] = res_articles["cnt"]
@@ -160,6 +161,10 @@ def get_db_stats() -> Dict[str, Any]:
             res_techs = session.run("MATCH (t:AITechnology) RETURN count(t) as cnt").single()
             if res_techs:
                 stats["technologies"] = res_techs["cnt"]
+
+            res_edges = session.run("MATCH ()-[r]->() RETURN count(r) as cnt").single()
+            if res_edges:
+                stats["relationships"] = res_edges["cnt"]
 
             # 2. 기업 및 기술 목록 & 설명 조회 (상위 5개)
             res_comp_list = session.run(
@@ -208,7 +213,7 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
     for t in stats.get("techs_list", []):
         tech_html += f"""
         <div class="definition-item">
-            <span class="definition-name" style="color: #059669;">💡 {t['name']}</span>
+            <span class="definition-name">💡 {t['name']}</span>
             <span class="definition-desc">{t['desc']}</span>
         </div>
         """
@@ -231,25 +236,37 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
     if not news_list_html:
         news_list_html = '<div style="font-size:10px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
 
+    node_count = stats['companies'] + stats['technologies']
+
     html: str = f"""
     <div class="dashboard-container">
-        <div style="font-size: 15px; font-weight: 800; color: #4f46e5; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-            📊 <span>지식 그래프 대시보드</span>
+        <!-- Ambient background elements for beautiful glass effects -->
+        <div class="ambient-glow"></div>
+        
+        <div style="font-size: 14px; font-weight: 850; color: #5b5b7f; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; letter-spacing: -0.02em;">
+            📊 <span>FinGraph AI Terminal</span>
         </div>
-        <p style="font-size: 11px; color: #64748b; margin-top: -2px; margin-bottom: 12px;">실시간 연동 통계</p>
+        <p style="font-size: 9px; color: #47464e; margin-top: -2px; margin-bottom: 10px; font-weight: 500;">GraphRAG 실시간 분석 엔진</p>
         
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-lbl">📰 뉴스 기사</div>
+                <div class="stat-lbl">📰 학습 기사</div>
                 <div class="stat-val">{stats['articles']}건</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">🏢 핵심 기업</div>
-                <div class="stat-val">{stats['companies']}개</div>
+                <div class="stat-lbl">🧬 지식 노드</div>
+                <div class="stat-val">{node_count}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">💡 주요 기술</div>
-                <div class="stat-val">{stats['technologies']}개</div>
+                <div class="stat-lbl">⛓️ 관계 연결</div>
+                <div class="stat-val">{stats['relationships']}개</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-lbl">⚡ 엔진 상태</div>
+                <div class="stat-val" style="color: #4d6075; display: flex; align-items: center; justify-content: center; gap: 3px;">
+                    <span style="width: 6px; height: 6px; background-color: #5b5b7f; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #5b5b7f;"></span>
+                    Active
+                </div>
             </div>
         </div>
         
@@ -285,101 +302,136 @@ except Exception:
     gradio_major = 4  # 기본값 백업
 
 theme_obj = gr.themes.Soft(
-    font=[gr.themes.GoogleFont("Pretendard"), gr.themes.GoogleFont("Noto Sans KR"), "sans-serif"],
-    primary_hue="indigo",
-    secondary_hue="blue",
+    font=["Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
+    primary_hue="purple",
+    secondary_hue="slate",
 )
 
 custom_css: str = """
-/* 대시보드 메인 컨테이너 */
-.dashboard-container {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 12px;
-    font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-}
-.dark .dashboard-container {
-    background-color: #0f172a;
-    border-color: #1e293b;
+body {
+    background-color: #fbf9f6;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
-/* 통계 그리드 및 카드 */
+/* Ambient glow point backgrounds */
+.ambient-glow {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 85% 15%, rgba(196, 195, 236, 0.35) 0%, transparent 45%), 
+                radial-gradient(circle at 15% 85%, rgba(180, 200, 225, 0.3) 0%, transparent 45%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* 대시보드 투명 퍼플 글래스모피즘 컨테이너 */
+.dashboard-container {
+    background: rgba(245, 243, 240, 0.45) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1px solid rgba(196, 195, 236, 0.45) !important;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 12px -2px rgba(88, 89, 125, 0.05) !important;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.dark .dashboard-container {
+    background: rgba(15, 23, 42, 0.55) !important;
+    border-color: rgba(129, 140, 248, 0.25) !important;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 통계 그리드 및 글래스 카드 */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 .stat-card {
-    background: white;
-    border: 1px solid #e2e8f0;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(196, 195, 236, 0.4);
     border-radius: 6px;
-    padding: 6px 4px;
+    padding: 5px 6px;
     text-align: center;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(88, 89, 125, 0.02);
+    transition: all 0.25s ease-in-out;
 }
 .stat-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.04);
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(91, 91, 127, 0.6);
+    box-shadow: 0 4px 8px -2px rgba(88, 89, 125, 0.1);
 }
 .dark .stat-card {
-    background: #1e293b;
-    border-color: #334155;
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(129, 140, 248, 0.2);
     color: #f1f5f9;
+}
+.dark .stat-card:hover {
+    border-color: rgba(129, 140, 248, 0.5);
 }
 .stat-val {
     font-size: 13px;
     font-weight: 800;
-    color: #4f46e5;
-    margin-top: 2px;
+    color: #5b5b7f; /* 투명 퍼플 에디션 포인트 색상 */
+    margin-top: 1px;
 }
 .dark .stat-val {
-    color: #818cf8;
+    color: #c4c3ec;
 }
 .stat-lbl {
     font-size: 9px;
-    color: #64748b;
+    color: #47464e;
     font-weight: 500;
 }
 .dark .stat-lbl {
     color: #94a3b8;
 }
 
-/* 주요 기업 및 기술 정의 리스트 스타일 */
+/* 주요 기업 및 기술 정의 리스트 글래스모피즘 스타일 */
 .definition-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 .definition-item {
-    background-color: white;
-    border: 1px solid #e2e8f0;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(196, 195, 236, 0.3);
     border-radius: 5px;
     padding: 4px 6px;
     display: flex;
     flex-direction: column;
     gap: 1px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
+    box-shadow: 0 1px 2px rgba(88, 89, 125, 0.01);
+    transition: all 0.2s ease;
+}
+.definition-item:hover {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(91, 91, 127, 0.45);
 }
 .dark .definition-item {
-    background-color: #1e293b;
-    border-color: #334155;
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(129, 140, 248, 0.15);
+}
+.dark .definition-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(129, 140, 248, 0.4);
 }
 .definition-name {
     font-size: 10px;
-    font-weight: 700;
-    color: #4f46e5;
+    font-weight: 800;
+    color: #5b5b7f; /* 퍼플 포인트 */
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
 .dark .definition-name {
-    color: #818cf8;
+    color: #c4c3ec;
 }
 .definition-desc {
     font-size: 9px;
-    color: #475569;
+    color: #47464e;
     line-height: 1.3;
 }
 .dark .definition-desc {
@@ -388,16 +440,16 @@ custom_css: str = """
 
 /* 최근 뉴스 타임라인 및 스크롤바 스타일 */
 .news-feed-container {
-    max-height: 110px;
+    max-height: 100px;
     overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 6px;
-    background: white;
+    border: 1px solid rgba(196, 195, 236, 0.35);
+    border-radius: 5px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.5);
 }
 .dark .news-feed-container {
-    background: #1e293b;
-    border-color: #334155;
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(129, 140, 248, 0.15);
 }
 /* 스크롤바 커스텀 */
 .news-feed-container::-webkit-scrollbar {
@@ -407,26 +459,26 @@ custom_css: str = """
     background: transparent;
 }
 .news-feed-container::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: rgba(91, 91, 127, 0.3);
     border-radius: 2px;
 }
 .dark .news-feed-container::-webkit-scrollbar-thumb {
-    background: #475569;
+    background: rgba(196, 195, 236, 0.3);
 }
 
 .news-item {
-    border-left: 2px solid #6366f1;
-    padding-left: 8px;
-    margin-bottom: 6px;
+    border-left: 2px solid #5b5b7f; /* 퍼플 포인트 */
+    padding-left: 6px;
+    margin-bottom: 5px;
     position: relative;
 }
 .news-item:last-child {
     margin-bottom: 0;
 }
 .news-title {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    color: #1e293b;
+    color: #1b1c1a;
     text-decoration: none;
     line-height: 1.3;
     display: block;
@@ -435,56 +487,56 @@ custom_css: str = """
     text-overflow: ellipsis;
 }
 .news-title:hover {
-    color: #4f46e5;
+    color: #5b5b7f;
     text-decoration: underline;
 }
 .dark .news-title {
     color: #cbd5e1;
 }
 .dark .news-title:hover {
-    color: #818cf8;
+    color: #c4c3ec;
 }
 .news-meta {
-    font-size: 9px;
+    font-size: 8px;
     color: #94a3b8;
     margin-top: 1px;
 }
 
 /* 서브타이틀 헤더 스타일 */
 .section-subtitle {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    color: #0f172a;
-    margin: 10px 0 6px 0;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 4px;
+    color: #1b1c1a;
+    margin: 8px 0 4px 0;
+    border-bottom: 1px solid rgba(196, 195, 236, 0.35);
+    padding-bottom: 3px;
     display: flex;
     align-items: center;
     gap: 4px;
 }
 .dark .section-subtitle {
     color: #f8fafc;
-    border-color: #334155;
+    border-color: rgba(129, 140, 248, 0.2);
 }
 
-/* 챗봇 버튼 고대비화 스타일 (흰색으로 안 보이던 현상 해결) */
+/* 챗봇 버튼 퍼플 포인트 스타일 (흰색으로 안 보이던 현상 해결) */
 button.primary, 
 .primary-btn, 
 button.lg.primary, 
 button.sm.primary,
 button.variant-primary {
-    background-color: #4f46e5 !important;
+    background-color: #5b5b7f !important;
     color: white !important;
     font-weight: 800 !important;
     border: none !important;
-    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2) !important;
+    box-shadow: 0 4px 6px rgba(91, 91, 127, 0.2) !important;
     transition: all 0.2s ease-in-out !important;
 }
 button.primary:hover, 
 .primary-btn:hover, 
 button.variant-primary:hover {
-    background-color: #4338ca !important;
-    box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3) !important;
+    background-color: #434466 !important;
+    box-shadow: 0 6px 12px rgba(91, 91, 127, 0.3) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -495,29 +547,32 @@ button.sm.secondary,
 button.wrap,
 button.variant-secondary,
 .secondary-btn {
-    background-color: #f1f5f9 !important;
-    color: #334155 !important;
-    border: 1px solid #cbd5e1 !important;
+    background-color: rgba(255, 255, 255, 0.6) !important;
+    color: #47464e !important;
+    border: 1px solid rgba(196, 195, 236, 0.45) !important;
     font-weight: 700 !important;
     transition: all 0.2s ease-in-out !important;
+    backdrop-filter: blur(8px);
 }
 .dark button.secondary, 
 .dark button.variant-secondary, 
 .dark .secondary-btn {
-    background-color: #1e293b !important;
+    background-color: rgba(30, 41, 59, 0.6) !important;
     color: #f1f5f9 !important;
-    border-color: #475569 !important;
+    border-color: rgba(129, 140, 248, 0.2) !important;
 }
 button.secondary:hover, 
 button.variant-secondary:hover,
 .secondary-btn:hover {
-    background-color: #e2e8f0 !important;
-    color: #0f172a !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    color: #1b1c1a !important;
+    border-color: rgba(91, 91, 127, 0.5) !important;
 }
 .dark button.secondary:hover, 
 .dark button.variant-secondary:hover {
-    background-color: #334155 !important;
+    background-color: rgba(30, 41, 59, 0.95) !important;
     color: white !important;
+    border-color: rgba(129, 140, 248, 0.4) !important;
 }
 """
 
@@ -529,13 +584,13 @@ interface_kwargs = {
         container=False,
         scale=7,
     ),
-    "title": "FinNode — AI 기업 트렌드 분석 챗봇",
+    "title": "FinGraph — GraphRAG AI Terminal",
     "description": "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.",
     "examples": [
+        "삼성전자의 최근 AI 기술 트렌드는?",
+        "카카오가 개발 중인 AI 서비스 목록을 알려줘",
         "어떤 기업이 LLM 기술을 개발하나요?",
-        "KT나 SKT 등 통신사들의 AI 비서 서비스 및 LLM 전략",
-        "최근 1주일간 가장 이슈가 된 AI 분야 뉴스 종합 브리핑",
-        "국내 주요 기업들의 최신 생성형 AI 서비스 출시 동향은?",
+        "최근 AI 관련 뉴스 기사를 요약해줘",
     ],
     "cache_examples": False,
 }
@@ -564,11 +619,11 @@ else:
 with gr.Blocks(**blocks_kwargs) as demo:
     # 1. 상단 글로벌 네비게이션 바 (GNB)
     gr.HTML("""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; background-color: white; margin: -20px -20px 20px -20px;">
-        <div style="font-size: 20px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 12px;">
-            FinNode <span style="font-size: 14px; font-weight: 600; color: #4f46e5;">GraphRAG 기반 엔터프라이즈 분석</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(196, 195, 236, 0.45); background-color: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); margin: -20px -20px 20px -20px;">
+        <div style="font-size: 20px; font-weight: 900; color: #5b5b7f; display: flex; align-items: center; gap: 12px;">
+            FinGraph <span style="font-size: 14px; font-weight: 600; color: #5b5b7f;">GraphRAG Enhanced AI Terminal</span>
         </div>
-        <div style="display: flex; gap: 18px; color: #64748b; font-size: 18px; cursor: pointer;">
+        <div style="display: flex; gap: 18px; color: #5b5b7f; font-size: 18px; cursor: pointer;">
             <span>🔔</span> <span>⚙️</span> <span>👤</span>
         </div>
     </div>
@@ -586,8 +641,8 @@ with gr.Blocks(**blocks_kwargs) as demo:
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">
-                <h2 style="font-size: 18px; font-weight: 700; color: #334155; margin-bottom: 5px;">FinNode — AI 기업 트렌드 분석 챗봇</h2>
-                <p style="color: #64748b; font-size: 13px;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
+                <h2 style="font-size: 18px; font-weight: 800; color: #5b5b7f; margin-bottom: 5px;">FinGraph — GraphRAG AI Terminal</h2>
+                <p style="color: #47464e; font-size: 13px;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
             </div>
             """)
             

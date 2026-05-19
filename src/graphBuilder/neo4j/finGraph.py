@@ -61,7 +61,7 @@ def check_ai_relevance(state: ArticleState) -> ArticleState:
     res = chat_llm.invoke(prompt)
     return {
         **state,
-        "is_ai_related": res.content.strip().lower().startswith("yes"),
+        "is_ai_related": str(res.content).strip().lower().startswith("yes"),
     }
 
 
@@ -80,7 +80,7 @@ def extract_entities(state: ArticleState) -> ArticleState:
 JSON으로만 응답:{{"entities":[{{"name":"...","type":"AICompany|AITechnology|AIService|AIField","description":"..."}}]}}"""
     res = chat_llm.invoke(prompt)
     try:
-        raw = res.content.strip()
+        raw = str(res.content).strip()
         if "```" in raw:
             raw = raw.split("```")[1].lstrip("json")
         entities = json.loads(raw).get("entities", [])
@@ -102,7 +102,7 @@ def extract_relations(state: ArticleState) -> ArticleState:
     )
     res = chat_llm.invoke(prompt)
     try:
-        raw = res.content.strip()
+        raw = str(res.content).strip()
         if "```" in raw:
             raw = raw.split("```")[1].lstrip("json")
         relations = json.loads(raw).get("relations", [])

@@ -80,7 +80,7 @@ def test_portfolio_showcase_aggregation_query():
 ```
 
 ## 자동 검사
-- 로컬 개발 환경에서 커밋하기 전, 반드시 터미널에 `ruff check .` 및 `pre-commit run mypy --all-files` (또는 `mypy .`) 명령어를 실행하여 린트/타입 오류를 확인하고 모두 고칠 것 (오류가 남아있는 상태로 커밋 금지).
+- 로컬 개발 환경에서 커밋하기 전, 반드시 터미널에 `ruff check .` 및 `mypy src tests --ignore-missing-imports` 명령어를 직접 실행하여 린트 및 엄격한 타입 오류를 확실하게 확인하고 모두 고칠 것 (오류가 남아있는 상태로 커밋 금지).
 - 커밋 전 `pre-commit` 자동 실행
 - `ruff`, `mypy` 검사 통과 필수
 - 검사 실패 시 커밋 불가

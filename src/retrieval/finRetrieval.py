@@ -26,7 +26,6 @@ from neo4j_graphrag.retrievers import (
     Text2CypherRetriever,
     ToolsRetriever,
     VectorCypherRetriever,
-    VectorRetriever,
 )
 
 dotenv.load_dotenv()
@@ -221,12 +220,6 @@ class LazyGraphRAG:
         embedder = OpenAIEmbeddings(model="text-embedding-3-small")
             
         driver = get_neo4j_driver()
-        
-        vector_retriever = VectorRetriever(
-            driver=driver,
-            index_name=INDEX_NAME,
-            embedder=embedder,
-        )
         
         vector_cypher_retriever = VectorCypherRetriever(
             driver=driver,

@@ -199,70 +199,60 @@ def get_db_stats() -> Dict[str, Any]:
 
 
 def build_stats_html(stats: Dict[str, Any]) -> str:
-    """조회된 지식 그래프 통계 정보들을 바탕으로 미려한 대시보드용 HTML을 생성합니다.
-
-    Args:
-        stats: get_db_stats() 함수에서 반환된 통계 딕셔너리
-
-    Returns:
-        str: 스타일링된 완성형 HTML 소스코드
-    """
-    # 1. 기업 뱃지 HTML 생성
+    """조회된 지식 그래프 통계 정보들을 바탕으로 미려하고 컴팩트한 대시보드용 HTML을 생성합니다."""
+    # 1. 기업 뱃지 HTML 생성 (상위 최대 8개)
     comp_badges: str = ""
-    for c in stats.get("companies_list", []):
+    for c in stats.get("companies_list", [])[:8]:
         comp_badges += f'<span class="badge-item">{c}</span>'
     if not comp_badges:
-        comp_badges = '<span style="font-size:12px; color:#94a3b8;">등록된 기업이 없습니다.</span>'
+        comp_badges = '<span style="font-size:10px; color:#94a3b8;">등록된 기업이 없습니다.</span>'
 
-    # 2. 기술 뱃지 HTML 생성
+    # 2. 기술 뱃지 HTML 생성 (상위 최대 8개)
     tech_badges: str = ""
-    for t in stats.get("techs_list", []):
+    for t in stats.get("techs_list", [])[:8]:
         tech_badges += f'<span class="badge-item tech-badge">{t}</span>'
     if not tech_badges:
-        tech_badges = '<span style="font-size:12px; color:#94a3b8;">등록된 기술이 없습니다.</span>'
+        tech_badges = '<span style="font-size:10px; color:#94a3b8;">등록된 기술이 없습니다.</span>'
 
-    # 3. 최근 기사 리스트 HTML 생성
+    # 3. 최근 기사 리스트 HTML 생성 (최대 3개)
     news_list_html: str = ""
-    for a in stats.get("recent_articles", []):
+    for a in stats.get("recent_articles", [])[:3]:
         title = a["title"]
         url = a["url"] if a["url"] and str(a["url"]).lower() != "nan" else "#"
         target = 'target="_blank"' if url != "#" else ""
+        date_str = str(a['date'])[:10] if a['date'] else ""
         news_list_html += f"""
         <div class="news-item">
             <a class="news-title" href="{url}" {target}>{title}</a>
-            <div class="news-meta">🗓️ {a['date']} | 🔗 원문 보기</div>
+            <div class="news-meta">🗓️ {date_str}</div>
         </div>
         """
     if not news_list_html:
-        news_list_html = '<div style="font-size:12px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
+        news_list_html = '<div style="font-size:10px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
 
     html: str = f"""
     <div class="dashboard-container">
-        <div style="font-size: 17px; font-weight: 800; color: #4f46e5; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        <div style="font-size: 15px; font-weight: 800; color: #4f46e5; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
             📊 <span>지식 그래프 대시보드</span>
         </div>
-        <p style="font-size: 12px; color: #64748b; margin-top: -4px; margin-bottom: 16px;">Neo4j AuraDB 실시간 엔티티 연동 통계</p>
+        <p style="font-size: 11px; color: #64748b; margin-top: -2px; margin-bottom: 12px;">실시간 연동 통계</p>
         
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-lbl">📰 뉴스 기사</div>
+                <div class="stat-lbl">📰 뉴스</div>
                 <div class="stat-val">{stats['articles']}건</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">🏢 분석 기업</div>
+                <div class="stat-lbl">🏢 기업</div>
                 <div class="stat-val">{stats['companies']}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">💡 핵심 기술</div>
+                <div class="stat-lbl">💡 기술</div>
                 <div class="stat-val">{stats['technologies']}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">⚙️ 등록 서비스</div>
-                <div class="stat-val">{stats['services']}개</div>
-            </div>
-            <div class="stat-card" style="grid-column: span 2;">
-                <div class="stat-lbl">🧩 지식 벡터 밀도 (Graph Vector Density)</div>
-                <div class="stat-val" style="color: #059669;">{stats['chunks']} Chunks</div>
+                <div class="stat-lbl">🧩 벡터 Chunks</div>
+                <div class="stat-val" style="color: #059669;">{stats['chunks']}개</div>
             </div>
         </div>
         
@@ -276,9 +266,11 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
             {tech_badges}
         </div>
         
-        <div class="section-subtitle">📰 최신 실시간 뉴스 피드</div>
-        <div class="news-feed">
-            {news_list_html}
+        <div class="section-subtitle">📰 최신 뉴스 피드</div>
+        <div class="news-feed-container">
+            <div class="news-feed">
+                {news_list_html}
+            </div>
         </div>
     </div>
     """
@@ -307,7 +299,7 @@ custom_css: str = """
     background-color: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 20px;
+    padding: 12px;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
@@ -320,21 +312,21 @@ custom_css: str = """
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 .stat-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 6px;
+    padding: 6px 8px;
     text-align: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     transition: all 0.2s ease-in-out;
 }
 .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.04);
 }
 .dark .stat-card {
     background: #1e293b;
@@ -342,16 +334,16 @@ custom_css: str = """
     color: #f1f5f9;
 }
 .stat-val {
-    font-size: 20px;
+    font-size: 14px;
     font-weight: 800;
     color: #4f46e5;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 .dark .stat-val {
     color: #818cf8;
 }
 .stat-lbl {
-    font-size: 11px;
+    font-size: 10px;
     color: #64748b;
     font-weight: 500;
 }
@@ -363,16 +355,16 @@ custom_css: str = """
 .badge-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: 4px;
+    margin-bottom: 10px;
 }
 .badge-item {
     background-color: #e0e7ff;
     color: #3730a3;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
+    padding: 2px 8px;
+    border-radius: 12px;
     border: 1px solid #c7d2fe;
     transition: all 0.2s;
 }
@@ -410,23 +402,53 @@ custom_css: str = """
     color: #064e3b;
 }
 
-/* 최근 뉴스 타임라인 스타일 */
-.news-feed {
-    margin-top: 15px;
+/* 최근 뉴스 타임라인 및 스크롤바 스타일 */
+.news-feed-container {
+    max-height: 110px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px;
+    background: white;
 }
+.dark .news-feed-container {
+    background: #1e293b;
+    border-color: #334155;
+}
+/* 스크롤바 커스텀 */
+.news-feed-container::-webkit-scrollbar {
+    width: 4px;
+}
+.news-feed-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.news-feed-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+.dark .news-feed-container::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
 .news-item {
-    border-left: 3px solid #6366f1;
-    padding-left: 12px;
-    margin-bottom: 12px;
+    border-left: 2px solid #6366f1;
+    padding-left: 8px;
+    margin-bottom: 6px;
     position: relative;
 }
+.news-item:last-child {
+    margin-bottom: 0;
+}
 .news-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #1e293b;
     text-decoration: none;
-    line-height: 1.4;
+    line-height: 1.3;
     display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .news-title:hover {
     color: #4f46e5;
@@ -439,22 +461,22 @@ custom_css: str = """
     color: #818cf8;
 }
 .news-meta {
-    font-size: 10px;
+    font-size: 9px;
     color: #94a3b8;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 /* 서브타이틀 헤더 스타일 */
 .section-subtitle {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #0f172a;
-    margin: 18px 0 10px 0;
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 6px;
+    margin: 10px 0 6px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 .dark .section-subtitle {
     color: #f8fafc;

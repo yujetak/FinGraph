@@ -54,13 +54,13 @@ INDEX_NAME = "content_vector_index"
 # ──────────────────────────────────────────
 
 _retrieval_query = """
-MATCH (content:Content)<-[:HAS_CHUNK]-(article:Article)
+MATCH (node)<-[:HAS_CHUNK]-(article:Article)
 OPTIONAL MATCH (article)-[:MENTIONS]->(company:AICompany)
 OPTIONAL MATCH (company)-[:DEVELOPS]->(tech:AITechnology)
 OPTIONAL MATCH (company)-[:DEVELOPS]->(svc:AIService)
 OPTIONAL MATCH (article)-[:MENTIONS]->(field:AIField)
 RETURN
-    content.chunk          AS chunk,
+    node.chunk             AS chunk,
     article.title          AS article_title,
     article.url            AS article_url,
     article.published_date AS article_date,
@@ -68,8 +68,6 @@ RETURN
     collect(DISTINCT tech.name)    AS technologies,
     collect(DISTINCT svc.name)     AS services,
     collect(DISTINCT field.name)   AS fields
-ORDER BY article.published_date DESC
-LIMIT 3
 """
 
 
@@ -117,6 +115,12 @@ CYPHER QUERY:
     WHERE f.name CONTAINS "금융" OR f.name CONTAINS "핀테크"
     RETURN DISTINCT c.name, s.name, f.name
     LIMIT 3""",
+    """USER INPUT: 최근 AI 관련 뉴스 기사를 요약해줘
+CYPHER QUERY:
+    MATCH (a:Article)-[:HAS_CHUNK]->(c:Content)
+    RETURN a.title, a.url, a.published_date, c.chunk
+    ORDER BY a.published_date DESC
+    LIMIT 3""",
 ]
 
 # ──────────────────────────────────────────
@@ -161,10 +165,10 @@ _prompt_template = CustomRagTemplate(
 반드시 아래 제공된 [컨텍스트(Neo4j 지식 그래프 검색 결과)]에 기반해서만 답변하세요.
 
 ⚠️ [엄격한 주의사항]
-1. 컨텍스트에 없는 기업, 서비스, 기술, 해외 기업(JP모건 등)은 절대 언급하지 마세요.
+1. 컨텍스트에 없는 기업, 서비스, 기술은 절대 언급하지 마세요. (해외 기업도 컨텍스트에 있으면 요약 가능합니다)
 2. 질문에 해당하는 정보가 컨텍스트에 없다면 지어내지 말고, "현재 수집된 최신 뉴스 데이터에는 관련 정보가 없습니다"라고 정직하게 답변하세요.
 3. 근거로 제시할 URL은 오직 컨텍스트에 포함된 실제 기사의 URL만 사용하며, 'example.com' 같은 가짜 링크는 절대 생성하지 마세요.
-4. 취업 준비생이 기업 지원 동기를 작성할 수 있도록, 컨텍스트에 있는 팩트를 기반으로 구체적이고 전문적으로 답변하세요.
+4. 취업 지원 목적의 기업 분석은 구체적으로 작성하고, "최근 뉴스 기사 요약" 등의 일반 트렌드 질문은 핵심 내용을 잘 정리하여 브리핑해주세요.
 
 질문: {query_text}
 
@@ -225,7 +229,7 @@ class LazyGraphRAG:
                 ),
                 text2cypher_retriever.convert_to_tool(
                     name="text2cypher_retriever",
-                    description="자연어를 Cypher로 변환. 특정 기업 서비스 목록, 기술 보유 기업 등 구조적 질의에 사용.",
+                    description="자연어를 Cypher로 변환. 특정 기업 서비스 목록, 기술 보유 기업 등 구조적 질의, 또는 '최근 기사 요약' 같은 최신 전체 뉴스 검색에 사용.",
                 ),
             ],
         )

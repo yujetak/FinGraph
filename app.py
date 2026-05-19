@@ -122,7 +122,11 @@ try:
 except Exception:
     gradio_major = 4  # 기본값 백업
 
-theme_obj = "soft"
+theme_obj = gr.themes.Soft(
+    font=[gr.themes.GoogleFont("Pretendard"), gr.themes.GoogleFont("Noto Sans KR"), "sans-serif"],
+    primary_hue="indigo",
+    secondary_hue="blue",
+)
 
 interface_kwargs = {
     "fn": chat,

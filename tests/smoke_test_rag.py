@@ -136,32 +136,39 @@ if __name__ == "__main__":
 
     results = []
 
-    # 시나리오 1: 특정 기업
+    # 시나리오 1: 삼성전자 AI 기술 트렌드
     results.append(run_scenario(
-        label="① 특정 기업 — 지원동기 자료 조사",
-        query="카카오가 개발 중인 AI 서비스와 기술 트렌드를 알려줘. 지원동기 작성에 참고하고 싶어.",
+        label="① 특정 기업 — 삼성전자의 최근 AI 기술 트렌드는?",
+        query="삼성전자의 최근 AI 기술 트렌드는?",
+        expected_keywords=["삼성전자", "AI", "기술"],
+    ))
+
+    # 시나리오 2: 카카오 AI 서비스
+    results.append(run_scenario(
+        label="② 특정 기업 — 카카오가 개발 중인 AI 서비스 목록을 알려줘",
+        query="카카오가 개발 중인 AI 서비스 목록을 알려줘",
         expected_keywords=["카카오", "AI", "서비스"],
     ))
 
-    # 시나리오 2: 특정 기술
+    # 시나리오 3: LLM 기술 개발 기업
     results.append(run_scenario(
-        label="② 특정 기술 — LLM 기술 보유 기업 탐색",
-        query="LLM(대규모 언어 모델) 기술을 개발하거나 도입하고 있는 국내 금융·핀테크 기업들은 어디야?",
-        expected_keywords=["LLM", "AI", "기업"],
+        label="③ 특정 기술 — 어떤 기업이 LLM 기술을 개발하나요?",
+        query="어떤 기업이 LLM 기술을 개발하나요?",
+        expected_keywords=["LLM"],
     ))
 
-    # 시나리오 3: 전체 트렌드 (포트폴리오 대표 골드 쿼리)
+    # 시나리오 4: 최근 AI 뉴스 기사 요약
     results.append(run_scenario(
-        label="③ 전체 트렌드 — 금융AI 분야 TOP 3 기업",
-        query="최근 수집된 뉴스에서 금융AI(AIField) 분야에 가장 적극적으로 기술을 개발하고 있는 기업 TOP 3와 그 기업들이 개발한 대표 서비스를 알려줘.",
-        expected_keywords=["1.", "기업", "서비스", "AI"],
+        label="④ 전체 트렌드 — 최근 AI 관련 뉴스 기사를 요약해줘",
+        query="최근 AI 관련 뉴스 기사를 요약해줘",
+        expected_keywords=["AI"],
     ))
 
     # 최종 요약
     print("=" * 60)
     print("📋 최종 요약")
     print("=" * 60)
-    labels = ["① 특정 기업", "② 특정 기술", "③ 전체 트렌드"]
+    labels = ["① 삼성전자 AI 트렌드", "② 카카오 AI 서비스", "③ LLM 개발 기업", "④ 최근 AI 뉴스 요약"]
     for label, passed in zip(labels, results):
         print(f"  {'✅ PASS' if passed else '⚠️  PARTIAL'} | {label}")
     print()

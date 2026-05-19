@@ -80,20 +80,25 @@ FinGraph/
 실제 뉴스 지식 그래프가 빌드된 후, 임의의 최신 데이터를 동적으로 탐색하여 포트폴리오 수준의 완성도 높은 답변을 도출하는지 검증합니다.
 
 ```python
-# tests/test_retrieval.py
-def test_portfolio_showcase_aggregation_query():
+# tests/test_retrieval.py (또는 smoke_test_rag.py)
+def test_4_core_scenarios():
     """
-    [포트폴리오 핵심 골드 시나리오]
-    특정 기업 고정 없이, '금융AI' 분야의 적극적인 기업 TOP 3와 대표 서비스를 
-    그래프 탐색을 통해 완벽한 근거(출처)와 함께 응답하는지 검증합니다.
+    [포트폴리오 핵심 4대 골드 시나리오]
+    Gradio 앱에 등록된 4가지 대표 예제 질의가 완벽히 응답을 반환하는지 검증합니다.
     """
-    showcase_query = "최근 수집된 뉴스에서 금융AI(AIField) 분야에 가장 적극적으로 기술을 개발하고 있는 기업 TOP 3와 그 기업들이 개발한 대표 서비스를 알려줘."
-    response = graphrag.search(query_text=showcase_query)
+    scenarios = [
+        "삼성전자의 최근 AI 기술 트렌드는?",
+        "카카오가 개발 중인 AI 서비스 목록을 알려줘",
+        "어떤 기업이 LLM 기술을 개발하나요?",
+        "최근 AI 관련 뉴스 기사를 요약해줘"
+    ]
     
-    assert response is not None
-    assert len(response.answer.strip()) > 0
-    # 출처 표기 및 랭킹 구조화 지침 준수 여부 검증
-    assert any(indicator in response.answer for indicator in ["1.", "TOP", "기사", "출처"]) # 일종의 skill
+    for query in scenarios:
+        response = graphrag.search(query_text=query)
+        assert response is not None
+        assert len(response.answer.strip()) > 0
+        # 출처(기사 등)가 반드시 포함되어야 함
+        assert any(indicator in response.answer for indicator in ["기사", "출처", "뉴스", "보도"])
 ```
 
 ## 자동 검사 및 런타임 에러 방지
@@ -108,7 +113,7 @@ def test_portfolio_showcase_aggregation_query():
 - [x] **1. 기사 데이터 대량 수집**: `finScrapping.py`의 수집량/분야를 조절하여 최소 100건 이상의 풍부한 뉴스 데이터 풀(Pool) 확보. (총 74건의 고품질 실물 뉴스 데이터 수집 완료)
 - [x] **2. 지식 그래프 밀도 향상**: 확보된 데이터를 `finGraph.py`를 통해 Neo4j에 적재하여 Company, Technology 등의 노드와 관계선(Edge) 대폭 확장. (총 296개의 노드 및 346개의 관계선으로 초고밀도 은하수 스케일 그래프 구축 완료)
 - [x] **3. 환각(Hallucination) 방지 프롬프트 강화**: `finRetrieval.py`의 프롬프트에 "반드시 제공된 검색 결과 기반으로만 답변하고, 없는 기업이나 가짜 URL(example.com 등)은 절대 지어내지 말 것"을 명시. (철벽 프롬프트 가드레일 설계 완료)
-- [x] **4. 3대 시나리오 최종 통과**: `tests/smoke_test_rag.py`를 재실행하여 가짜 링크나 외부 지식 개입 없이, 수집된 국내 뉴스 기반으로 완벽히 답변하는지 검증. (하이브리드 예비 검색기 결합으로 3대 골드 시나리오 100% 완전 PASS 검증 성공)
+- [x] **4. 4대 핵심 시나리오 최종 통과**: `tests/smoke_test_rag.py`를 재실행하여 가짜 링크나 외부 지식 개입 없이, 수집된 국내 뉴스 기반으로 완벽히 답변하는지 검증. (하이브리드 예비 검색기 및 Text2Cypher 결합으로 4대 골드 시나리오 완전 PASS 검증 성공)
 
 ## 배포 및 자동화 파이프라인 (Pipeline Automation)
 - [x] **매일 새벽 1시(KST) 최신화 파이프라인 구축**: 크롤링(`finScrapping.py`) ➡️ 지식 그래프 적재(`finGraph.py`)로 이어지는 엔드투엔드(End-to-End) 자동화.

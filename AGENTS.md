@@ -49,10 +49,10 @@ FinGraph/
 ## 🚨 재발 방지 및 치명적 안티 패턴 금지 (Recurring Issues Prevention)
 이 프로젝트에서 3회 이상 반복적으로 발생하여 전체 파이프라인(로컬, CI, 프로덕션)을 붕괴시켰던 핵심 장애들을 영구적으로 차단하기 위한 필수 규칙 및 방어 테스트입니다.
 
-- **1. Import-Time DB Connection 절대 금지 (CI 크래시 방지)**
-  - **원인**: 모듈 전역 범위(Global Scope)에서 데이터베이스를 즉시 연결(`driver = get_neo4j_driver()`)하여, GitHub Actions(CI)나 `pytest`가 테스트를 수집(`import`)하기만 해도 접속 불가 에러(`Connection refused`)로 뻗어버리는 문제 3회 이상 발생.
-  - **규칙**: 모듈 임포트 시점에는 절대 DB와 통신하지 말 것. RAG 인스턴스는 반드시 `LazyGraphRAG` 프록시 패턴을 사용하여 실제 쿼리(`search`) 호출 시점에 단 1회 지연 초기화(`_init_once()`) 되도록 설계해야 함. `finGraph.py` 역시 전역이 아닌 `main()` 내부에서 드라이버를 런타임 초기화할 것.
-  - **방어 테스트**: `python -c "import src.retrieval.finRetrieval"` 및 `python -c "import src.graphBuilder.neo4j.finGraph"` 명령을 실행했을 때, DB 연결 시도 없이 즉각 0.1초 만에 정상 종료되는지 점검 후 커밋할 것.
+- **1. Import-Time DB Connection 및 API Client 객체 생성 절대 금지 (CI 크래시 방지)**
+  - **원인**: 모듈 전역 범위(Global Scope)에서 데이터베이스를 즉시 연결(`driver = get_neo4j_driver()`)하거나 OpenAI API 키가 필요한 클라이언트 객체(`OpenAILLM`, `OpenAIEmbeddings`)를 선언하여, GitHub Actions(CI)나 `pytest`가 테스트를 수집(`import`)하기만 해도 접속 불가 에러(`Connection refused`)나 API Key 누락 에러(`OpenAIError`)로 뻗어버리는 문제 지속 발생.
+  - **규칙**: 모듈 임포트 시점에는 절대 외부 DB나 API 클라이언트와 통신/초기화하지 말 것. DB 드라이버, LLM, Embeddings 인스턴스는 반드시 `LazyGraphRAG` 프록시 패턴을 사용하여 실제 쿼리(`search`)나 자가 진단(`_init_once()`) 호출 시점에 단 1회 지연 초기화(`Lazy Initialization`) 되도록 설계해야 함. `finGraph.py` 역시 전역이 아닌 `main()` 내부에서 드라이버를 런타임 초기화할 것.
+  - **방어 테스트**: `env -i .venv/bin/python3 -c "import src.retrieval.finRetrieval"` 및 `env -i .venv/bin/python3 -c "import src.graphBuilder.neo4j.finGraph"` 명령을 실행했을 때, 외부 접속 및 API 키 검증 없이 즉각 0.2초 만에 정상 종료되는지 점검 후 커밋할 것.
 
 - **2. 프로덕션 Fail-Fast 자가 진단 필수 (침묵의 런타임 에러 방지)**
   - **원인**: 허깅페이스(HF Spaces) 배포 시 DB 연결 환경 변수가 누락되었음에도 불구하고 웹 앱은 정상적으로 켜진 척(Running) 하다가, 사용자가 처음 질문을 던진 순간 500 내부 에러를 뿜으며 뻗어버리는 심각한 운영 장애 발생.

@@ -131,7 +131,7 @@ theme_obj = gr.themes.Soft(
 interface_kwargs = {
     "fn": chat,
     "chatbot": gr.Chatbot(height=500),
-    "textbox": gr.Textbox(container=False, scale=7),
+    "textbox": gr.Textbox(placeholder="여기에 질문을 입력하고 Enter를 누르거나 우측의 전송 버튼을 클릭하세요...", submit_btn="🚀 전송", container=False, scale=7),
     "title": "FinNode — AI 기업 트렌드 분석 챗봇",
     "description": (
         "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.\n\n"

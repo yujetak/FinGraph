@@ -180,7 +180,7 @@ _prompt_template = CustomRagTemplate(
 class LazyGraphRAG:
     """임포트 시점에 DB 연결을 방지하고 실제 호출될 때 GraphRAG 인스턴스를 초기화하는 지연 평가 프록시"""
     def __init__(self) -> None:
-        self._graphrag = None
+        self._graphrag: Any = None
 
     def _init_once(self) -> None:
         if self._graphrag is not None:

@@ -246,11 +246,11 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         <!-- 수집된 데이터 규모 -->
         <div class="stats-grid" style="margin-top: 10px; margin-bottom: 15px;">
             <div class="stat-card" style="padding: 8px 10px;">
-                <div class="stat-lbl">📰 학습 기사</div>
-                <div class="stat-val" style="color: #334155;">{stats['articles']}건</div>
+                <div class="stat-lbl">📰 실시간 수집 뉴스</div>
+                <div class="stat-val" style="color: #334155;">{stats['articles']}개</div>
             </div>
             <div class="stat-card" style="padding: 8px 10px;">
-                <div class="stat-lbl">🧬 지식 노드</div>
+                <div class="stat-lbl">🧬 인공지능 지식망</div>
                 <div class="stat-val" style="color: #334155;">{node_count}개</div>
             </div>
         </div>

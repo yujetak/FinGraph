@@ -184,19 +184,16 @@ def get_db_stats() -> Dict[str, Any]:
 
 def build_stats_html(stats: Dict[str, Any]) -> str:
     """조회된 지식 그래프 통계 정보들을 바탕으로 미려하고 컴팩트한 대시보드용 HTML을 생성합니다."""
-    # 1. 기술 리스트 HTML 생성
-    tech_html: str = ""
+    # 1. 최신 뉴스 키워드 배지 HTML 생성 (둥근 네모 형태)
+    keyword_html: str = ""
     for t in stats.get("techs_list", []):
-        tech_html += f"""
-        <div class="definition-item">
-            <span class="definition-name">💡 {t['name']}</span>
-            <span class="definition-desc">{t['desc']}</span>
-        </div>
+        keyword_html += f"""
+        <span class="keyword-badge"># {t['name']}</span>
         """
-    if not tech_html:
-        tech_html = '<div style="font-size:12px; color:#94a3b8;">등록된 기술이 없습니다.</div>'
+    if not keyword_html:
+        keyword_html = '<div style="font-size:12px; color:#94a3b8;">등록된 키워드가 없습니다.</div>'
 
-    # 2. 최근 기사 리스트 HTML 생성 (최대 3개)
+    # 2. 최근 기사 리스트 HTML 생성 (최대 3개) - 전체 영역 클릭 시 이동하도록 a 태그로 래핑
     news_list_html: str = ""
     for a in stats.get("recent_articles", []):
         title = a["title"]
@@ -204,10 +201,12 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         target = 'target="_blank"' if url != "#" else ""
         date_str = str(a['date'])[:10] if a['date'] else ""
         news_list_html += f"""
-        <div class="news-item">
-            <a class="news-title" href="{url}" {target}>{title}</a>
-            <div class="news-meta">🗓️ {date_str}</div>
-        </div>
+        <a class="news-item-link" href="{url}" {target}>
+            <div class="news-item">
+                <div class="news-title">{title}</div>
+                <div class="news-meta">🗓️ {date_str}</div>
+            </div>
+        </a>
         """
     if not news_list_html:
         news_list_html = '<div style="font-size:12px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
@@ -235,9 +234,9 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
             </div>
         </div>
         
-        <div class="section-subtitle">💡 핵심 AI 기술 사전</div>
-        <div class="definition-list">
-            {tech_html}
+        <div class="section-subtitle">💡 최신 뉴스 키워드</div>
+        <div class="keyword-container">
+            {keyword_html}
         </div>
         
         <div class="section-subtitle">📰 최신 뉴스 피드</div>
@@ -348,59 +347,38 @@ body {
     color: #94a3b8;
 }
 
-/* 주요 기술 정의 리스트 글래스모피즘 스타일 */
-.definition-list {
+/* 최신 뉴스 키워드 컨테이너 및 둥근 배지 스타일 */
+.keyword-container {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 12px;
 }
-.definition-item {
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid rgba(196, 195, 236, 0.35);
-    border-radius: 6px;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    box-shadow: 0 1px 2px rgba(88, 89, 125, 0.01);
-    transition: all 0.2s ease;
+.keyword-badge {
+    display: inline-block;
+    background: rgba(196, 195, 236, 0.2);
+    border: 1px solid rgba(196, 195, 236, 0.55);
+    border-radius: 8px; /* 이전처럼 약간 둥근 네모 */
+    padding: 6px 12px;
+    font-size: 11px !important;
+    font-weight: 700;
+    color: #5b5b7f;
+    box-shadow: 0 1px 3px rgba(88, 89, 125, 0.02);
+    transition: all 0.2s ease-in-out;
 }
-.definition-item:hover {
-    background: rgba(255, 255, 255, 0.85);
-    border-color: rgba(91, 91, 127, 0.45);
+.keyword-badge:hover {
+    background: rgba(196, 195, 236, 0.35);
+    transform: scale(1.03);
 }
-.dark .definition-item {
-    background: rgba(30, 41, 59, 0.5);
-    border-color: rgba(129, 140, 248, 0.15);
-}
-.dark .definition-item:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(129, 140, 248, 0.4);
-}
-.definition-name {
-    font-size: 13px !important;
-    font-weight: 800;
-    color: #5b5b7f; /* 퍼플 포인트 */
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.dark .definition-name {
+.dark .keyword-badge {
+    background: rgba(129, 140, 248, 0.12);
+    border-color: rgba(129, 140, 248, 0.25);
     color: #c4c3ec;
 }
-.definition-desc {
-    font-size: 11px !important;
-    color: #47464e;
-    line-height: 1.4;
-}
-.dark .definition-desc {
-    color: #cbd5e1;
-}
 
-/* 최근 뉴스 타임라인 및 스크롤바 스타일 */
+/* 최근 뉴스 피드 클릭 가능한 카드 레이아웃 */
 .news-feed-container {
-    max-height: 140px;
+    max-height: 150px;
     overflow-y: auto;
     border: 1px solid rgba(196, 195, 236, 0.35);
     border-radius: 6px;
@@ -426,35 +404,46 @@ body {
     background: rgba(196, 195, 236, 0.3);
 }
 
+.news-item-link {
+    text-decoration: none;
+    display: block;
+    margin-bottom: 8px;
+}
+.news-item-link:last-child {
+    margin-bottom: 0;
+}
 .news-item {
     border-left: 3px solid #5b5b7f; /* 퍼플 포인트 */
-    padding-left: 8px;
-    margin-bottom: 8px;
-    position: relative;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 0 6px 6px 0;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
 }
-.news-item:last-child {
-    margin-bottom: 0;
+.news-item-link:hover .news-item {
+    background: rgba(255, 255, 255, 0.85);
+    border-left-color: #434466;
+    transform: translateX(3px);
+    box-shadow: 0 2px 6px rgba(91, 91, 127, 0.08);
+}
+.dark .news-item {
+    background: rgba(30, 41, 59, 0.3);
+}
+.dark .news-item-link:hover .news-item {
+    background: rgba(30, 41, 59, 0.65);
+    border-left-color: rgba(129, 140, 248, 0.6);
 }
 .news-title {
     font-size: 12px !important;
     font-weight: 600;
     color: #1b1c1a;
-    text-decoration: none;
     line-height: 1.4;
-    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.news-title:hover {
-    color: #5b5b7f;
-    text-decoration: underline;
-}
 .dark .news-title {
     color: #cbd5e1;
-}
-.dark .news-title:hover {
-    color: #c4c3ec;
 }
 .news-meta {
     font-size: 10px !important;
@@ -634,14 +623,14 @@ with gr.Blocks(**blocks_kwargs) as demo:
     """)
     
     with gr.Row():
-        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 반반 (50/50) split을 위해 scale=1 설정
-        with gr.Column(scale=1, min_width=450):
+        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 4:6 split을 위해 scale=4 설정
+        with gr.Column(scale=4, min_width=350):
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
             
-        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 반반 (50/50) split을 위해 scale=1 설정
-        with gr.Column(scale=1, min_width=450):
+        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 4:6 split을 위해 scale=6 설정
+        with gr.Column(scale=6, min_width=500):
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">

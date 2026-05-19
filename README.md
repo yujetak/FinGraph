@@ -1,3 +1,13 @@
+---
+title: FinGraph
+emoji: 🕸️
+colorFrom: indigo
+colorTo: indigo
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+---
 # FinNode 🕸️
 
 **Neo4j GraphRAG 기반 AI 뉴스 지식 그래프 플랫폼**

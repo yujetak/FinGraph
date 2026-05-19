@@ -1,5 +1,6 @@
 from src.graphBuilder.neo4j.finGraph import chunk_text
 
+
 def test_chunk_text_empty_returns_empty_list():
     assert chunk_text("") == []
 

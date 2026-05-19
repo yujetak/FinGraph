@@ -11,17 +11,18 @@ app.py에서 import하여 Gradio 챗봇과 연동합니다.
 """
 
 import os
+
 import dotenv
 import neo4j
-from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.embeddings.openai import OpenAIEmbeddings
+from neo4j_graphrag.generation import GraphRAG, RagTemplate
+from neo4j_graphrag.llm import OpenAILLM
 from neo4j_graphrag.retrievers import (
-    VectorRetriever,
-    VectorCypherRetriever,
     Text2CypherRetriever,
     ToolsRetriever,
+    VectorCypherRetriever,
+    VectorRetriever,
 )
-from neo4j_graphrag.generation import RagTemplate, GraphRAG
 
 dotenv.load_dotenv()
 
@@ -29,11 +30,14 @@ dotenv.load_dotenv()
 # 1. DB / LLM / Embedder 초기화
 # ──────────────────────────────────────────
 
-URI      = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-AUTH     = (os.getenv("NEO4J_USERNAME", "neo4j"), os.getenv("NEO4J_PASSWORD", "password"))
-driver   = neo4j.GraphDatabase.driver(URI, auth=AUTH)
+URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
+AUTH = (
+    os.getenv("NEO4J_USERNAME", "neo4j"),
+    os.getenv("NEO4J_PASSWORD", "password"),
+)
+driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
 
-rag_llm  = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
+rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
 embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
 INDEX_NAME = "content_vector_index"
@@ -76,6 +80,7 @@ vector_cypher_retriever = VectorCypherRetriever(
     embedder=embedder,
 )
 
+
 # (3) 자연어 → Cypher 자동 변환 검색
 def _get_schema() -> str:
     with driver.session() as s:
@@ -85,9 +90,7 @@ def _get_schema() -> str:
             "RETURN nodeType, collect(propertyName) as props"
         ).data()
         rels = s.run(
-            "MATCH (n)-[r]->(m) "
-            "RETURN DISTINCT labels(n)[0] as src, type(r) as rel, labels(m)[0] as tgt "
-            "LIMIT 30"
+            "MATCH (n)-[r]->(m) RETURN DISTINCT labels(n)[0] as src, type(r) as rel, labels(m)[0] as tgt LIMIT 30"
         ).data()
     txt = "=== Neo4j Schema ===\n노드:\n"
     for n in nodes:
@@ -103,18 +106,15 @@ _examples = [
 CYPHER QUERY:
 MATCH (c:AICompany {name:"카카오"})-[:DEVELOPS]->(s:AIService)
 RETURN s.name, s.description""",
-
     """USER INPUT: 삼성전자가 개발 중인 AI 기술은?
 CYPHER QUERY:
 MATCH (c:AICompany {name:"삼성전자"})-[:DEVELOPS]->(t:AITechnology)
 RETURN t.name, t.description""",
-
     """USER INPUT: 최근 AI 관련 기사 5개
 CYPHER QUERY:
 MATCH (a:Article)-[:MENTIONS]->(:AICompany)
 RETURN DISTINCT a.article_id, a.title, a.url, a.published_date
 ORDER BY a.published_date DESC LIMIT 5""",
-
     """USER INPUT: 어떤 기업이 LLM 기술을 개발하나요?
 CYPHER QUERY:
 MATCH (c:AICompany)-[:DEVELOPS]->(t:AITechnology)

@@ -1,6 +1,8 @@
 import json
+
+from pipeline.db_writer import chunk_and_embed_article, write_graph_to_neo4j
 from pipeline.workflow import pipeline
-from pipeline.db_writer import write_graph_to_neo4j, chunk_and_embed_article
+
 
 def run_test():
     # 1. 모의 테스트용 뉴스 기사 데이터 준비

@@ -1,5 +1,7 @@
 import os
+
 import pytest
+
 from src.retrieval.finRetrieval import graphrag
 
 # API 키와 Neo4j 연결정보가 없을 경우 테스트를 건너뜁니다.

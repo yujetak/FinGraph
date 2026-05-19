@@ -1,9 +1,12 @@
 ###### 참고: https://wikidocs.net/340866
+###### 하네스 엔지니어링: Global지침, Skills와 Workflow를 모두 포함하는 지침
+###### 개발 시작부터 배포까지 모든 것은 AGENTS.md에 기록한다.
+###### 예를들어 개발 단계에서 체크리스트를 만들어서 개발을 할 때마다 하나씩 체크하도록 지시한다.
 
 # AGENTS.md
 
 ## 프로젝트 개요
-- 목적: 
+- 목적: AI 기반 핀테크 기술의 트렌드를 파악하도록 돕는 챗봇
 - 언어: Python 3.10
 - 기술스택: GraphRAG, LangChain, LangGraph, Neo4j, HugingFace, Gradio
 

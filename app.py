@@ -8,11 +8,12 @@ Gradio ChatInterface + LangGraph 기반 대화 흐름 제어.
     python app.py
 """
 
-import os
+from typing import List, TypedDict
+
 import dotenv
 import gradio as gr
-from typing import TypedDict, List
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+
 from src.retrieval.finRetrieval import graphrag
 
 dotenv.load_dotenv()

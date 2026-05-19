@@ -240,6 +240,7 @@ class LazyGraphRAG:
 
     def search(self, *args: Any, **kwargs: Any) -> Any:
         self._init_once()
+        assert self._graphrag is not None
         return self._graphrag.search(*args, **kwargs)
 
     def __getattr__(self, name: str) -> Any:

@@ -150,10 +150,11 @@ with gr.Blocks(
             "어떤 기업이 LLM 기술을 개발하나요?",
             "최근 AI 관련 뉴스 기사를 요약해줘",
         ],
+        cache_examples=False,
         retry_btn=None,
         undo_btn="↩️ 되돌리기",
         clear_btn="🗑️ 대화 초기화",
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7860)

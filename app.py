@@ -146,8 +146,7 @@ interface_kwargs = {
     "cache_examples": False
 }
 
-# HF Spaces 컨테이너 내 루프백 검증 실패(ValueError)를 완벽히 우회하기 위해
-# server_name과 server_port를 바인딩하고 theme을 분기하여 주입합니다.
+# HF Spaces 컨테이너 내 루프백 검증 실패(ValueError) 우회 및 로컬/원격 호환 구동을 위해 launch 인자 정밀 설계
 launch_kwargs = {
     "server_name": "0.0.0.0",
     "server_port": 7860,

@@ -109,6 +109,7 @@ def test_portfolio_showcase_aggregation_query():
 - [x] **2. 지식 그래프 밀도 향상**: 확보된 데이터를 `finGraph.py`를 통해 Neo4j에 적재하여 Company, Technology 등의 노드와 관계선(Edge) 대폭 확장. (총 296개의 노드 및 346개의 관계선으로 초고밀도 은하수 스케일 그래프 구축 완료)
 - [x] **3. 환각(Hallucination) 방지 프롬프트 강화**: `finRetrieval.py`의 프롬프트에 "반드시 제공된 검색 결과 기반으로만 답변하고, 없는 기업이나 가짜 URL(example.com 등)은 절대 지어내지 말 것"을 명시. (철벽 프롬프트 가드레일 설계 완료)
 - [x] **4. 3대 시나리오 최종 통과**: `tests/smoke_test_rag.py`를 재실행하여 가짜 링크나 외부 지식 개입 없이, 수집된 국내 뉴스 기반으로 완벽히 답변하는지 검증. (하이브리드 예비 검색기 결합으로 3대 골드 시나리오 100% 완전 PASS 검증 성공)
+- [x] **5. Hugging Face 런타임 에러 해결**: Spaces 격리 환경에서의 루프백 바인딩 오류(ValueError) 및 Jinja2 호환성(TypeError) 문제 완벽 수정 완료.
 
 ## 배포 및 자동화 파이프라인 (Pipeline Automation)
 - [x] **매일 새벽 1시(KST) 최신화 파이프라인 구축**: 크롤링(`finScrapping.py`) ➡️ 지식 그래프 적재(`finGraph.py`)로 이어지는 엔드투엔드(End-to-End) 자동화.

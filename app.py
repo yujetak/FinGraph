@@ -122,7 +122,6 @@ try:
 except Exception:
     gradio_major = 4  # 기본값 백업
 
-# Jinja2 직렬화 에러(unhashable type: 'dict') 방지를 위해 테마를 문자열("soft")로 정의
 theme_obj = "soft"
 
 interface_kwargs = {
@@ -147,8 +146,12 @@ interface_kwargs = {
     "cache_examples": False
 }
 
-# HF Spaces 컨테이너 내 루프백 검증 실패(ValueError) 우회를 위해 launch 인자 최소화
-launch_kwargs = {}
+# HF Spaces 컨테이너 내 루프백 검증 실패(ValueError)를 완벽히 우회하기 위해
+# server_name과 server_port를 바인딩하고 theme을 분기하여 주입합니다.
+launch_kwargs = {
+    "server_name": "0.0.0.0",
+    "server_port": 7860,
+}
 
 # 버전에 맞춘 테마 주입 파이프라인
 if gradio_major < 5:

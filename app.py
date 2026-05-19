@@ -19,6 +19,18 @@ from src.retrieval.finRetrieval import graphrag
 dotenv.load_dotenv()
 
 # ──────────────────────────────────────────
+# Startup DB 자가 진단 (Fail-Fast)
+# ──────────────────────────────────────────
+# 허깅페이스Spaces 및 실제 앱 서버 구동 시점에는 즉시 자가 진단을 수행하여,
+# Neo4j 데이터베이스 연결이 불가능하면 구동 실패(Crash Early)를 일으킵니다.
+try:
+    graphrag._init_once()
+    print("✅ [자가 진단 완료] Neo4j AuraDB 지식 그래프에 완벽하게 접속되었습니다!")
+except Exception as e:
+    print(f"❌ [자가 진단 실패] Neo4j DB 연결 확인 중 에러가 발생했습니다: {e}")
+    raise e
+
+# ──────────────────────────────────────────
 # 1. LangGraph 챗봇 State 정의
 # ──────────────────────────────────────────
 

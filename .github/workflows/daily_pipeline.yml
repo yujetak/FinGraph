@@ -1,0 +1,59 @@
+name: Daily GraphRAG Update Pipeline
+
+on:
+  # 토큰 요금 발생 우려 및 비용 절감을 위해 매일 자동 실행되는 스케줄(Cron)은 완벽히 주석 처리(비활성화)합니다.
+  # schedule:
+  #   # 매일 새벽 1시(KST) = UTC 16:00
+  #   - cron: '0 16 * * *'
+  # 수동 실행만 허용 (개발자님께서 필요 시 GitHub Actions 웹 UI에서 직접 가동)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Scrapping & Neo4j Incremental Load
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_CLIENT_ID: ${{ secrets.NEO4J_CLIENT_ID }}
+          NEO4J_CLIENT_SECRET: ${{ secrets.NEO4J_CLIENT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python3 src/graphBuilder/scrapping/finScrapping.py
+          python3 src/graphBuilder/neo4j/finGraph.py
+
+      - name: Commit and Push New Excel Data
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 새로 수집되어 생성된 엑셀 파일들을 스테이징
+          git add src/graphBuilder/scrapping/Articles_*.xlsx
+          
+          # 변경사항 존재 여부 확인 후 커밋 및 푸시
+          if git diff --cached --quiet; then
+            echo "No new news articles found to update today."
+          else
+            git commit -m "chore: auto-update crawled news articles $(date +'%Y-%m-%d')"
+            git push origin main
+          fi

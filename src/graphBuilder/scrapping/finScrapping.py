@@ -14,7 +14,7 @@ categories = {
     "경제": "https://news.naver.com/section/101",
     "IT/과학": "https://news.naver.com/section/105",
 }
-NUM_ARTICLES_PER_CATEGORY = 80
+NUM_ARTICLES_PER_CATEGORY = 300
 
 # AI 핀테크 키워드 (FinNode 프로젝트 전용)
 FINTECH_AI_KEYWORDS = [
@@ -41,6 +41,18 @@ def get_article_links(driver, category_url, num_articles):
     driver.get(category_url)
     time.sleep(3)
     print(f"  [LINK] 로드 완료 (title: {driver.title})")
+
+    print("  [LINK] 더 많은 기사를 불러오기 위해 스크롤 및 '기사 더보기' 버튼을 클릭합니다...")
+    for _ in range(15):  # 최대 15회 스크롤/클릭 시도
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(1.0)
+        try:
+            more_btn = driver.find_element(By.CSS_SELECTOR, ".section_more_inner")
+            if more_btn.is_displayed():
+                driver.execute_script("arguments[0].click();", more_btn)
+                time.sleep(1.5)
+        except:
+            pass
 
     article_links = []
     selectors = [

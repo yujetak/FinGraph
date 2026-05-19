@@ -31,10 +31,9 @@ dotenv.load_dotenv()
 # ──────────────────────────────────────────
 
 URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-AUTH = (
-    os.getenv("NEO4J_USERNAME", "neo4j"),
-    os.getenv("NEO4J_PASSWORD", "password"),
-)
+username = os.getenv("NEO4J_CLIENT_ID") or os.getenv("NEO4J_USERNAME") or "neo4j"
+password = os.getenv("NEO4J_CLIENT_SECRET") or os.getenv("NEO4J_PASSWORD") or "password"
+AUTH = (username, password)
 driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
 
 rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
@@ -104,22 +103,28 @@ def _get_schema() -> str:
 _examples = [
     """USER INPUT: 카카오의 AI 서비스 목록을 알려주세요
 CYPHER QUERY:
-MATCH (c:AICompany {name:"카카오"})-[:DEVELOPS]->(s:AIService)
-RETURN s.name, s.description""",
+    MATCH (c:AICompany {name:"카카오"})-[:DEVELOPS]->(s:AIService)
+    RETURN s.name, s.description""",
     """USER INPUT: 삼성전자가 개발 중인 AI 기술은?
 CYPHER QUERY:
-MATCH (c:AICompany {name:"삼성전자"})-[:DEVELOPS]->(t:AITechnology)
-RETURN t.name, t.description""",
-    """USER INPUT: 최근 AI 관련 기사 5개
-CYPHER QUERY:
-MATCH (a:Article)-[:MENTIONS]->(:AICompany)
-RETURN DISTINCT a.article_id, a.title, a.url, a.published_date
-ORDER BY a.published_date DESC LIMIT 5""",
+    MATCH (c:AICompany {name:"삼성전자"})-[:DEVELOPS]->(t:AITechnology)
+    RETURN t.name, t.description""",
     """USER INPUT: 어떤 기업이 LLM 기술을 개발하나요?
 CYPHER QUERY:
-MATCH (c:AICompany)-[:DEVELOPS]->(t:AITechnology)
-WHERE t.name CONTAINS "언어모델" OR t.name CONTAINS "LLM"
-RETURN c.name, t.name""",
+    MATCH (c:AICompany)-[:DEVELOPS]->(t:AITechnology)
+    WHERE t.name CONTAINS "언어모델" OR t.name CONTAINS "LLM"
+    RETURN c.name, t.name""",
+    """USER INPUT: 금융이나 핀테크 분야에 기술을 적용하고 있는 기업들은 어디야?
+CYPHER QUERY:
+    MATCH (c:AICompany)-[:DEVELOPS]->(t)-[:USED_IN]->(f:AIField)
+    WHERE f.name CONTAINS "금융" OR f.name CONTAINS "핀테크"
+    RETURN DISTINCT c.name, t.name, f.name""",
+    """USER INPUT: 금융AI 분야에 가장 적극적인 기업 TOP 3와 대표 서비스
+CYPHER QUERY:
+    MATCH (c:AICompany)-[:DEVELOPS]->(s)-[:USED_IN]->(f:AIField)
+    WHERE f.name CONTAINS "금융" OR f.name CONTAINS "핀테크"
+    RETURN DISTINCT c.name, s.name, f.name
+    LIMIT 3""",
 ]
 
 text2cypher_retriever = Text2CypherRetriever(
@@ -152,28 +157,61 @@ tools_retriever = ToolsRetriever(
     ],
 )
 
-_prompt_template = RagTemplate(
+from typing import Any
+from neo4j_graphrag.retrievers.base import Retriever
+from neo4j_graphrag.types import RawSearchResult, RetrieverResult
+
+class HybridFallbackRetriever(Retriever):
+    VERIFY_NEO4J_VERSION = False
+
+    def __init__(self, tools_retriever: Retriever, fallback_retriever: Retriever) -> None:
+        self.tools_retriever = tools_retriever
+        self.fallback_retriever = fallback_retriever
+        super().__init__(driver=tools_retriever.driver)
+
+    def get_search_results(self, *args: Any, **kwargs: Any) -> RawSearchResult:
+        return RawSearchResult(records=[])
+
+    def search(self, query_text: str = "", **kwargs: Any) -> RetrieverResult:
+        res = self.tools_retriever.search(query_text=query_text, **kwargs)
+        if not res or not res.items:
+            return self.fallback_retriever.search(query_text=query_text, **kwargs)
+        return res
+
+# 하이브리드 검색 인스턴스 장착
+hybrid_retriever = HybridFallbackRetriever(
+    tools_retriever=tools_retriever,
+    fallback_retriever=vector_cypher_retriever,
+)
+
+class CustomRagTemplate(RagTemplate):
+    EXPECTED_INPUTS = ["context", "query_text"]
+
+    def format(self, query_text: str, context: str, examples: str = "") -> str:
+        return self._format(query_text=query_text, context=context)
+
+_prompt_template = CustomRagTemplate(
     template="""당신은 AI 기술 트렌드 분석 전문가입니다.
-취업 준비생이 기업 지원 동기를 작성할 수 있도록 해당 기업의 AI 서비스·기술 트렌드를 명확하게 설명해 주세요.
+반드시 아래 제공된 [컨텍스트(Neo4j 지식 그래프 검색 결과)]에 기반해서만 답변하세요.
+
+⚠️ [엄격한 주의사항]
+1. 컨텍스트에 없는 기업, 서비스, 기술, 해외 기업(JP모건 등)은 절대 언급하지 마세요.
+2. 질문에 해당하는 정보가 컨텍스트에 없다면 지어내지 말고, "현재 수집된 최신 뉴스 데이터에는 관련 정보가 없습니다"라고 정직하게 답변하세요.
+3. 근거로 제시할 URL은 오직 컨텍스트에 포함된 실제 기사의 URL만 사용하며, 'example.com' 같은 가짜 링크는 절대 생성하지 마세요.
+4. 취업 준비생이 기업 지원 동기를 작성할 수 있도록, 컨텍스트에 있는 팩트를 기반으로 구체적이고 전문적으로 답변하세요.
 
 질문: {query_text}
 
-검색된 정보:
+[컨텍스트]
 {context}
 
-답변 지침:
-1. 기업이 개발 중인 AI 기술과 서비스를 구체적으로 명시하세요.
-2. 뉴스 기사 제목과 URL을 근거로 포함하세요.
-3. 지원자가 어떤 서비스에 어떻게 기여할 수 있는지 시사점을 1~2줄 추가하세요.
-4. 검색 결과에 없는 내용은 추측하지 마세요.
-
 답변:""",
-    expected_inputs=["context", "query_text"],
+    expected_inputs=["context", "query_text"]
 )
 
 # app.py에서 이 객체를 직접 import하여 사용합니다.
 graphrag = GraphRAG(
     llm=rag_llm,
-    retriever=tools_retriever,
+    retriever=hybrid_retriever,
     prompt_template=_prompt_template,
 )

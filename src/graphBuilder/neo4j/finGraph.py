@@ -27,10 +27,9 @@ from neo4j_graphrag.llm import OpenAILLM
 dotenv.load_dotenv()
 
 URI = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
-AUTH = (
-    os.getenv("NEO4J_USERNAME", "neo4j"),
-    os.getenv("NEO4J_PASSWORD", "password"),
-)
+username = os.getenv("NEO4J_CLIENT_ID") or os.getenv("NEO4J_USERNAME") or "neo4j"
+password = os.getenv("NEO4J_CLIENT_SECRET") or os.getenv("NEO4J_PASSWORD") or "password"
+AUTH = (username, password)
 driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
 
 chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -229,26 +228,53 @@ def chunk_text(text: str, size: int = 500, overlap: int = 50) -> List[str]:
 # ──────────────────────────────────────────
 
 
+def is_article_loaded(tx, aid: str) -> bool:
+    """이미 DB에 적재된 기사인지 체크하여 중복 API 호출 방지"""
+    res = tx.run("MATCH (a:Article {article_id:$aid}) RETURN count(a) as cnt", aid=aid)
+    single = res.single()
+    return (single["cnt"] > 0) if single else False
+
+
+# ──────────────────────────────────────────
+# 3. 메인 실행 (스크립트로 직접 호출 시)
+# ──────────────────────────────────────────
+
+
 def main() -> None:
-    # 최신 엑셀 로드
+    # 1. 모든 엑셀 파일 로드 후 병합 및 고유 기사만 필터링
     xlsx_files = sorted(glob.glob("Articles_*.xlsx"))
     if not xlsx_files:
         raise FileNotFoundError("Articles_*.xlsx 파일이 없습니다. finScrapping.py를 먼저 실행하세요.")
-    latest_file = xlsx_files[-1]
-    df = pd.read_excel(latest_file)
-    print(f"✅ 로드 완료: {latest_file} ({len(df)}건)")
+    
+    dfs = []
+    for f in xlsx_files:
+        try:
+            dfs.append(pd.read_excel(f))
+        except Exception as e:
+            print(f"⚠️ {f} 로드 실패: {e}")
 
-    # Neo4j 초기화
+    df = pd.concat(dfs, ignore_index=True).drop_duplicates(subset=["url"])
+    print(f"✅ 로드 완료: 총 {len(xlsx_files)}개 엑셀 파일 통합 완료 ({len(df)}건의 고유 기사 대상)")
+
+    # 2. Neo4j 스키마 생성 (삭제하지 않고 스키마만 준비)
     with driver.session() as s:
-        s.execute_write(lambda tx: tx.run("MATCH (n) DETACH DELETE n"))
         s.execute_write(setup_schema)
-    print("✅ Neo4j 초기화 완료")
+    print("✅ Neo4j 스키마 준비 완료 (기존 데이터 보존)")
 
-    # 엔티티/관계 추출 및 적재
-    print(f"총 {len(df)}건 처리 시작...")
+    # 3. 엔티티/관계 추출 및 적재 (신규 기사만 처리)
+    print(f"총 {len(df)}건 중 신규 기사 필터링 및 처리 시작...")
     for idx, row in df.iterrows():
         aid = str(row.get("article_id", f"ART_{idx}"))
         title = str(row.get("title", ""))
+        
+        # 이미 적재된 기사인지 판별
+        with driver.session() as s:
+            exists = s.execute_read(is_article_loaded, aid)
+        
+        if exists:
+            print(f"  ⏭️  [{idx + 1}/{len(df)}] 이미 적재됨 (스킵): {title[:35]}...")
+            continue
+
         text = title + "\n" + str(row.get("content", ""))
         state: ArticleState = dict(
             article_id=aid,
@@ -261,20 +287,31 @@ def main() -> None:
         out = pipeline.invoke(state)
         if out["is_ai_related"]:
             with driver.session() as s:
-                for e in out["entities"]:
-                    s.execute_write(upsert_entity, e)
+                for entity in out["entities"]:
+                    s.execute_write(upsert_entity, entity)
                 for r in out["relations"]:
                     s.execute_write(upsert_relation, r)
                 s.execute_write(upsert_article_and_mentions, row, out["entities"])
-            print(f"  ✅ [{idx + 1}/{len(df)}] {title[:35]}... | 엔티티: {[e['name'] for e in out['entities'][:4]]}")
+            print(f"  ✅ [{idx + 1}/{len(df)}] 신규 적재완료: {title[:35]}... | 엔티티: {[ent['name'] for ent in out['entities'][:4]]}")
         else:
-            print(f"  ⏭️  [{idx + 1}/{len(df)}] AI 비관련: {title[:35]}...")
-    print("\n✅ 엔티티/관계 추출 및 Neo4j 적재 완료")
+            print(f"  ⏭️  [{idx + 1}/{len(df)}] AI 비관련 (적재 제외): {title[:35]}...")
+    
+    print("\n✅ 엔티티/관계 추출 및 Neo4j 증분 적재 완료")
 
-    # Content 청킹 + 임베딩
-    print("Content 노드 생성 및 임베딩 시작...")
+    # 4. Content 청킹 + 임베딩 (신규 기사의 청크만 생성)
+    print("Content 노드 생성 및 신규 임베딩 시작...")
     for idx, row in df.iterrows():
         aid = str(row.get("article_id", f"ART_{idx}"))
+        
+        # 이미 이 기사의 청크가 임베딩되어 연결되어 있는지 확인
+        with driver.session() as s:
+            res = s.run("MATCH (a:Article {article_id:$aid})-[:HAS_CHUNK]->(c:Content) RETURN count(c) as cnt", aid=aid)
+            single = res.single()
+            has_chunks = (single["cnt"] > 0) if single else False
+        
+        if has_chunks:
+            continue
+
         chunks = chunk_text(str(row.get("content", "")))
         with driver.session() as s:
             for i, chunk in enumerate(chunks):
@@ -290,9 +327,9 @@ def main() -> None:
                     i=i,
                     vec=vec,
                 )
-    print("✅ Content 노드 임베딩 완료")
+    print("✅ Content 노드 신규 임베딩 적재 완료")
 
-    # 벡터 인덱스 생성
+    # 5. 벡터 인덱스 생성 (기존에 있으면 알아서 생략됨)
     create_vector_index(
         driver,
         INDEX_NAME,
@@ -301,7 +338,7 @@ def main() -> None:
         dimensions=1536,
         similarity_fn="cosine",
     )
-    print(f"✅ 벡터 인덱스 [{INDEX_NAME}] 생성 완료")
+    print(f"✅ 벡터 인덱스 [{INDEX_NAME}] 갱신 및 검증 완료")
 
 
 if __name__ == "__main__":

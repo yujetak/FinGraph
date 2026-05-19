@@ -47,9 +47,6 @@ def get_neo4j_driver() -> neo4j.Driver:
     return d
 
 
-rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
-embedder = OpenAIEmbeddings(model="text-embedding-3-small")
-
 INDEX_NAME = "content_vector_index"
 
 # ──────────────────────────────────────────
@@ -185,6 +182,10 @@ class LazyGraphRAG:
     def _init_once(self) -> None:
         if self._graphrag is not None:
             return
+            
+        # OpenAI 클라이언트 및 임베더 지연 초기화 (CI 크래시 방지)
+        rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
+        embedder = OpenAIEmbeddings(model="text-embedding-3-small")
             
         driver = get_neo4j_driver()
         

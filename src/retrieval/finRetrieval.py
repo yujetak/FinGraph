@@ -10,7 +10,12 @@ app.py에서 import하여 Gradio 챗봇과 연동합니다.
     print(response.answer)
 """
 
+import logging
 import os
+
+# Neo4j DBMS server warning (Deprecated vector queryNodes 등) 로깅 차단
+logging.getLogger("neo4j").setLevel(logging.ERROR)
+logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
 
 import dotenv
 import neo4j
@@ -94,31 +99,36 @@ _examples = [
     """USER INPUT: 카카오의 AI 서비스 목록을 알려주세요
 CYPHER QUERY:
     MATCH (c:AICompany {name:"카카오"})-[:DEVELOPS]->(s:AIService)
-    RETURN s.name, s.description""",
+    OPTIONAL MATCH (a:Article)-[:MENTIONS]->(s)
+    RETURN s.name AS name, s.description AS description, a.title AS article_title, a.url AS article_url""",
     """USER INPUT: 삼성전자가 개발 중인 AI 기술은?
 CYPHER QUERY:
     MATCH (c:AICompany {name:"삼성전자"})-[:DEVELOPS]->(t:AITechnology)
-    RETURN t.name, t.description""",
+    OPTIONAL MATCH (a:Article)-[:MENTIONS]->(t)
+    RETURN t.name AS name, t.description AS description, a.title AS article_title, a.url AS article_url""",
     """USER INPUT: 어떤 기업이 LLM 기술을 개발하나요?
 CYPHER QUERY:
     MATCH (c:AICompany)-[:DEVELOPS]->(t:AITechnology)
     WHERE t.name CONTAINS "언어모델" OR t.name CONTAINS "LLM"
-    RETURN c.name, t.name""",
+    OPTIONAL MATCH (a:Article)-[:MENTIONS]->(t)
+    RETURN c.name AS company_name, t.name AS tech_name, a.title AS article_title, a.url AS article_url""",
     """USER INPUT: 금융이나 핀테크 분야에 기술을 적용하고 있는 기업들은 어디야?
 CYPHER QUERY:
     MATCH (c:AICompany)-[:DEVELOPS]->(t)-[:USED_IN]->(f:AIField)
     WHERE f.name CONTAINS "금융" OR f.name CONTAINS "핀테크"
-    RETURN DISTINCT c.name, t.name, f.name""",
+    OPTIONAL MATCH (a:Article)-[:MENTIONS]->(t)
+    RETURN DISTINCT c.name AS company_name, t.name AS tech_name, f.name AS field_name, a.title AS article_title, a.url AS article_url""",
     """USER INPUT: 금융AI 분야에 가장 적극적인 기업 TOP 3와 대표 서비스
 CYPHER QUERY:
     MATCH (c:AICompany)-[:DEVELOPS]->(s)-[:USED_IN]->(f:AIField)
     WHERE f.name CONTAINS "금융" OR f.name CONTAINS "핀테크"
-    RETURN DISTINCT c.name, s.name, f.name
+    OPTIONAL MATCH (a:Article)-[:MENTIONS]->(s)
+    RETURN DISTINCT c.name AS company_name, s.name AS service_name, f.name AS field_name, a.title AS article_title, a.url AS article_url
     LIMIT 3""",
     """USER INPUT: 최근 AI 관련 뉴스 기사를 요약해줘
 CYPHER QUERY:
     MATCH (a:Article)-[:HAS_CHUNK]->(c:Content)
-    RETURN a.title, a.url, a.published_date, c.chunk
+    RETURN a.title AS title, a.url AS url, a.published_date AS published_date, c.chunk AS chunk
     ORDER BY a.published_date DESC
     LIMIT 3""",
 ]
@@ -166,8 +176,8 @@ _prompt_template = CustomRagTemplate(
 
 ⚠️ [엄격한 주의사항]
 1. 컨텍스트에 없는 기업, 서비스, 기술은 절대 언급하지 마세요. (해외 기업도 컨텍스트에 있으면 요약 가능합니다)
-2. 질문에 해당하는 정보가 컨텍스트에 없다면 지어내지 말고, "현재 수집된 최신 뉴스 데이터에는 관련 정보가 없습니다"라고 정직하게 답변하세요.
-3. 근거로 제시할 URL은 오직 컨텍스트에 포함된 실제 기사의 URL만 사용하며, 'example.com' 같은 가짜 링크는 절대 생성하지 마세요.
+2. 질문에 해당하는 정보가 컨텍스트에 없다면 지어내지 말고, "현재 수집된 최신 뉴스 데이터에는 관련 정보가 없습니다"라고 정직하게 답변하세요. 단, 컨텍스트에 휴머노이드 로봇(아틀라스 등), 반도체(HBM3E 등), 인프라 신기술 등 AI 연관 기술이 기술되어 있다면 이를 AI 관련 소식으로 간주하여 성실히 요약해 주세요.
+3. 답변 시 반드시 관련 기사 제목과 URL을 함께 표기하여 출처를 명확히 밝혀주세요 (예: [기사 제목](기사 URL)).
 4. 취업 지원 목적의 기업 분석은 구체적으로 작성하고, "최근 뉴스 기사 요약" 등의 일반 트렌드 질문은 핵심 내용을 잘 정리하여 브리핑해주세요.
 
 질문: {query_text}

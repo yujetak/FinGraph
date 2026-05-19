@@ -94,7 +94,7 @@ chat_graph = builder.compile()
 # ──────────────────────────────────────────
 
 
-def chat(message: str, history: list) -> str:
+def chat(message: str, history: list):
     """Gradio ChatInterface가 호출하는 함수.
 
     Args:
@@ -103,10 +103,11 @@ def chat(message: str, history: list) -> str:
                  [{"role": "user"/"assistant", "content": "..."}] 형식
 
     Returns:
-        str: 챗봇 답변
+        Generator: 챗봇 답변 (실시간 상태 표시 포함)
     """
     if not message.strip():
-        return "질문을 입력해 주세요."
+        yield "질문을 입력해 주세요."
+        return
 
     # Gradio history → LangGraph state 형식으로 변환
     state: ChatState = {
@@ -116,8 +117,17 @@ def chat(message: str, history: list) -> str:
         "answer": "",
     }
 
-    result = chat_graph.invoke(state)
-    return result["answer"]
+    yield "🔍 실시간 지식 그래프에서 관련 뉴스를 검색하는 중입니다..."
+
+    try:
+        # LangGraph의 stream을 사용하여 각 노드 실행 시점마다 이벤트를 받음
+        for event in chat_graph.stream(state):
+            if "retrieve" in event:
+                yield "💡 검색 완료! 분석 결과를 바탕으로 최종 답변을 생성하는 중입니다..."
+            elif "generate" in event:
+                yield event["generate"]["answer"]
+    except Exception as e:
+        yield f"⚠️ 챗봇 처리 중 오류가 발생했습니다: {str(e)}"
 
 
 def get_db_stats() -> Dict[str, Any]:
@@ -516,10 +526,10 @@ interface_kwargs = {
     "title": "FinNode — AI 기업 트렌드 분석 챗봇",
     "description": "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.",
     "examples": [
-        "삼성전자의 최근 AI 기술 트렌드는?",
-        "카카오가 개발 중인 AI 서비스 목록을 알려줘",
         "어떤 기업이 LLM 기술을 개발하나요?",
-        "최근 AI 관련 뉴스 기사를 요약해줘",
+        "KT나 SKT 등 통신사들의 AI 비서 서비스 및 LLM 전략",
+        "최근 1주일간 가장 이슈가 된 AI 분야 뉴스 종합 브리핑",
+        "국내 주요 기업들의 최신 생성형 AI 서비스 출시 동향은?",
     ],
     "cache_examples": False,
 }
@@ -564,18 +574,6 @@ with gr.Blocks(**blocks_kwargs) as demo:
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
-            
-            # 사이드바 하단 도움말/설정 메뉴
-            gr.HTML("""
-            <div style="margin-top: 15px; padding: 15px 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #475569; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s;" onmouseover="this.style.color='#4f46e5'" onmouseout="this.style.color='#475569'">
-                    <span style="font-size:16px;">❔</span> 도움말
-                </div>
-                <div style="cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s;" onmouseover="this.style.color='#4f46e5'" onmouseout="this.style.color='#475569'">
-                    <span style="font-size:16px;">👤</span> 사용자 설정
-                </div>
-            </div>
-            """)
             
         # 3. 오른쪽 컬럼: 메인 챗봇 에어리어
         with gr.Column(scale=3):

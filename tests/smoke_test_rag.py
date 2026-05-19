@@ -12,10 +12,10 @@ smoke_test_rag.py — GraphRAG 3대 시나리오 현장 검증 스크립트
     python3 tests/smoke_test_rag.py
 """
 
+import io
 import os
 import sys
 import time
-import io
 
 # Windows 환경에서 유니코드 이모지 출력 시 UnicodeEncodeError(cp949) 방지를 위한 stdout 인코딩 재설정
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')

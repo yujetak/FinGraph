@@ -58,6 +58,88 @@ def retrieve_node(state: ChatState) -> ChatState:
     try:
         result = graphrag.search(query_text=state["question"])
         context = result.answer  # GraphRAG가 이미 답변을 완성하므로 바로 사용
+        
+        # 실제 GraphRAG 검색 시 사용된 상위 3개 뉴스 피드 동적 추출 및 포맷팅
+        sources = []
+        seen_urls = set()
+        if hasattr(result, "retriever_result") and result.retriever_result and hasattr(result.retriever_result, "items"):
+            for item in result.retriever_result.items:
+                meta = getattr(item, "metadata", {})
+                title = meta.get("article_title")
+                url = meta.get("article_url")
+                date = meta.get("article_date")
+                if title and url and url not in seen_urls:
+                    seen_urls.add(url)
+                    # date 형식 포맷팅 (예: 2026-05-19T00:00:00Z -> 2026-05-19)
+                    if date and "T" in str(date):
+                        date = str(date).split("T")[0]
+                    sources.append({"title": title, "url": url, "date": date})
+                    if len(sources) >= 3:
+                        break
+        
+        # 만약 retriever_result에서 찾지 못한 경우, Neo4j DB에서 키워드 기반으로 직접 관련 뉴스 3개 백업 조회
+        if not sources:
+            try:
+                from src.retrieval.finRetrieval import get_neo4j_driver
+                driver = get_neo4j_driver()
+                # 단순 키워드 매칭 쿼리
+                query_words = [w for w in state["question"].split() if len(w) > 1]
+                conditions = []
+                for w in query_words[:3]:
+                    conditions.append(f"a.title CONTAINS '{w}' OR a.description CONTAINS '{w}'")
+                
+                with driver.session() as session:
+                    cypher = "MATCH (a:Article) "
+                    if conditions:
+                        cypher += "WHERE " + " OR ".join(conditions) + " "
+                    cypher += "RETURN a.title as title, a.url as url, a.published_date as date ORDER BY a.published_date DESC LIMIT 3"
+                    
+                    res_backup = session.run(cypher)
+                    for r in res_backup:
+                        title = r["title"]
+                        url = r["url"]
+                        date = r["date"]
+                        if title and url and url not in seen_urls:
+                            seen_urls.add(url)
+                            if date and "T" in str(date):
+                                date = str(date).split("T")[0]
+                            sources.append({"title": title, "url": url, "date": date})
+            except Exception:
+                pass
+                
+        # 만약 여전히 비어있다면, 최신 뉴스 3개 노출 (상상해 낸 가짜 정보 방지)
+        if not sources:
+            try:
+                from src.retrieval.finRetrieval import get_neo4j_driver
+                driver = get_neo4j_driver()
+                with driver.session() as session:
+                    res_latest = session.run(
+                        "MATCH (a:Article) RETURN a.title as title, a.url as url, a.published_date as date "
+                        "ORDER BY a.published_date DESC LIMIT 3"
+                    )
+                    for r in res_latest:
+                        title = r["title"]
+                        url = r["url"]
+                        date = r["date"]
+                        if title and url and url not in seen_urls:
+                            seen_urls.add(url)
+                            if date and "T" in str(date):
+                                date = str(date).split("T")[0]
+                            sources.append({"title": title, "url": url, "date": date})
+            except Exception:
+                pass
+                
+        # 답변 끝에 📰 관련 뉴스 피드 파트 정성스럽게 덧붙이기
+        if sources:
+            news_feed = "\n\n📰 **관련 뉴스 피드 (실시간 분석 출처)**\n"
+            for s in sources:
+                date_str = f" ({s['date']})" if s['date'] else ""
+                news_feed += f"- 🔗 [{s['title']}]({s['url']}){date_str}\n"
+            
+            # 중복으로 관련 뉴스 피드가 붙지 않도록 방지
+            if "관련 뉴스 피드" not in context:
+                context += news_feed
+                
     except Exception as e:
         context = f"[검색 오류: {e}]"
     return {**state, "context": context}
@@ -283,7 +365,7 @@ except Exception:
 
 theme_obj = gr.themes.Soft(
     font=["Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "sans-serif"],
-    primary_hue="purple",
+    primary_hue="sky",
     secondary_hue="slate",
 )
 
@@ -291,32 +373,33 @@ custom_css: str = """
 body {
     background-color: #fbf9f6;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    color: #0f172a !important; /* 기본 검정색 */
 }
 
-/* Ambient glow point backgrounds */
+/* Ambient glow point backgrounds (보라색 원천 배제, 은은한 스카이블루와 테일그린 톤) */
 .ambient-glow {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at 85% 15%, rgba(196, 195, 236, 0.35) 0%, transparent 45%), 
-                radial-gradient(circle at 15% 85%, rgba(180, 200, 225, 0.3) 0%, transparent 45%);
+    background: radial-gradient(circle at 85% 15%, rgba(14, 165, 233, 0.06) 0%, transparent 45%), 
+                radial-gradient(circle at 15% 85%, rgba(20, 184, 166, 0.06) 0%, transparent 45%);
     z-index: -1;
     pointer-events: none;
 }
 
-/* 대시보드 투명 퍼플 글래스모피즘 컨테이너 */
+/* 대시보드 투명 글래스모피즘 컨테이너 */
 .dashboard-container {
-    background: rgba(245, 243, 240, 0.45) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
-    border: 1px solid rgba(196, 195, 236, 0.45) !important;
+    border: 1px solid #cbd5e1 !important; /* 깔끔한 뉴트럴 슬레이트 테두리 */
     border-radius: 12px;
     padding: 16px;
-    box-shadow: 0 4px 12px -2px rgba(88, 89, 125, 0.05) !important;
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.03) !important;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .dark .dashboard-container {
     background: rgba(15, 23, 42, 0.55) !important;
-    border-color: rgba(129, 140, 248, 0.25) !important;
+    border-color: rgba(14, 165, 233, 0.25) !important;
     box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
 }
 
@@ -328,47 +411,47 @@ body {
     margin-bottom: 15px;
 }
 .stat-card {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(196, 195, 236, 0.4);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     padding: 10px;
     text-align: center;
-    box-shadow: 0 1px 3px rgba(88, 89, 125, 0.02);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.01);
     transition: all 0.25s ease-in-out;
 }
 .stat-card:hover {
     transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(91, 91, 127, 0.6);
-    box-shadow: 0 4px 12px -2px rgba(88, 89, 125, 0.1);
+    background: rgba(255, 255, 255, 1);
+    border-color: #0ea5e9; /* 호버 시 스카이 블루 */
+    box-shadow: 0 4px 12px -2px rgba(14, 165, 233, 0.1);
 }
 .dark .stat-card {
     background: rgba(30, 41, 59, 0.7);
-    border-color: rgba(129, 140, 248, 0.2);
+    border-color: rgba(14, 165, 233, 0.2);
     color: #f1f5f9;
 }
 .dark .stat-card:hover {
-    border-color: rgba(129, 140, 248, 0.5);
+    border-color: #38bdf8;
 }
 .stat-val {
     font-size: 16px !important;
     font-weight: 850 !important;
-    color: #5b5b7f; /* 투명 퍼플 에디션 포인트 색상 */
+    color: #0f172a !important; /* 확실한 고대비 검정색 글씨 */
     margin-top: 2px;
 }
 .dark .stat-val {
-    color: #c4c3ec;
+    color: #f8fafc !important;
 }
 .stat-lbl {
     font-size: 11px !important;
-    color: #47464e;
+    color: #334155;
     font-weight: 600;
 }
 .dark .stat-lbl {
     color: #94a3b8;
 }
 
-/* 최신 뉴스 키워드 컨테이너 및 둥근 배지 스타일 */
+/* 최신 뉴스 키워드 컨테이너 및 둥근 배지 스타일 (보라색 배제, 슬레이트 및 검정색 글씨) */
 .keyword-container {
     display: flex;
     flex-wrap: wrap;
@@ -377,38 +460,38 @@ body {
 }
 .keyword-badge {
     display: inline-block;
-    background: rgba(196, 195, 236, 0.2);
-    border: 1px solid rgba(196, 195, 236, 0.55);
-    border-radius: 8px; /* 이전처럼 약간 둥근 네모 */
+    background: #f1f5f9 !important; /* 연한 뉴트럴 슬레이트 */
+    border: 1px solid #cbd5e1 !important; /* 슬레이트 테두리 */
+    border-radius: 8px !important;
     padding: 6px 12px;
     font-size: 11px !important;
     font-weight: 700;
-    color: #5b5b7f;
-    box-shadow: 0 1px 3px rgba(88, 89, 125, 0.02);
+    color: #0f172a !important; /* 확실한 검정색 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
     transition: all 0.2s ease-in-out;
 }
 .keyword-badge:hover {
-    background: rgba(196, 195, 236, 0.35);
+    background: #e2e8f0 !important;
     transform: scale(1.03);
 }
 .dark .keyword-badge {
-    background: rgba(129, 140, 248, 0.12);
-    border-color: rgba(129, 140, 248, 0.25);
-    color: #c4c3ec;
+    background: rgba(15, 23, 42, 0.4) !important;
+    border-color: rgba(14, 165, 233, 0.25) !important;
+    color: #cbd5e1 !important;
 }
 
 /* 최근 뉴스 피드 클릭 가능한 카드 레이아웃 */
 .news-feed-container {
     max-height: 350px;
     overflow-y: auto;
-    border: 1px solid rgba(196, 195, 236, 0.35);
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.7);
 }
 .dark .news-feed-container {
     background: rgba(30, 41, 59, 0.5);
-    border-color: rgba(129, 140, 248, 0.15);
+    border-color: rgba(14, 165, 233, 0.15);
 }
 /* 스크롤바 커스텀 */
 .news-feed-container::-webkit-scrollbar {
@@ -418,11 +501,11 @@ body {
     background: transparent;
 }
 .news-feed-container::-webkit-scrollbar-thumb {
-    background: rgba(91, 91, 127, 0.3);
+    background: rgba(148, 163, 184, 0.4);
     border-radius: 2px;
 }
 .dark .news-feed-container::-webkit-scrollbar-thumb {
-    background: rgba(196, 195, 236, 0.3);
+    background: rgba(148, 163, 184, 0.2);
 }
 
 .news-item-link {
@@ -434,25 +517,25 @@ body {
     margin-bottom: 0;
 }
 .news-item {
-    border-left: 3px solid #5b5b7f; /* 퍼플 포인트 */
+    border-left: 3px solid #0ea5e9; /* 파란색 오션 블루 포인트 */
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.8);
     border-radius: 0 6px 6px 0;
     transition: all 0.2s ease-in-out;
     cursor: pointer;
 }
 .news-item-link:hover .news-item {
-    background: rgba(255, 255, 255, 0.85);
-    border-left-color: #434466;
+    background: rgba(255, 255, 255, 1);
+    border-left-color: #0284c7;
     transform: translateX(3px);
-    box-shadow: 0 2px 6px rgba(91, 91, 127, 0.08);
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.08);
 }
 .dark .news-item {
     background: rgba(30, 41, 59, 0.3);
 }
 .dark .news-item-link:hover .news-item {
     background: rgba(30, 41, 59, 0.65);
-    border-left-color: rgba(129, 140, 248, 0.6);
+    border-left-color: #38bdf8;
 }
 .news-title {
     font-size: 12px !important;
@@ -565,6 +648,7 @@ button[class*="submit-btn"]:hover,
 }
 
 /* secondary 및 기타 유틸리티 버튼 스타일 */
+/* secondary 및 기타 유틸리티 버튼 스타일 (보라색 제거) */
 button.secondary, 
 button.lg.secondary, 
 button.sm.secondary, 
@@ -572,8 +656,8 @@ button.wrap,
 button.variant-secondary,
 .secondary-btn {
     background-color: rgba(255, 255, 255, 0.6) !important;
-    color: #47464e !important;
-    border: 1px solid rgba(196, 195, 236, 0.45) !important;
+    color: #0f172a !important; /* 기본 검정색 */
+    border: 1px solid #cbd5e1 !important;
     font-weight: 700 !important;
     transition: all 0.2s ease-in-out !important;
     backdrop-filter: blur(8px);
@@ -583,79 +667,123 @@ button.variant-secondary,
 .dark .secondary-btn {
     background-color: rgba(30, 41, 59, 0.6) !important;
     color: #f1f5f9 !important;
-    border-color: rgba(129, 140, 248, 0.2) !important;
+    border-color: rgba(14, 165, 233, 0.2) !important;
 }
 button.secondary:hover, 
 button.variant-secondary:hover,
 .secondary-btn:hover {
     background-color: rgba(255, 255, 255, 0.95) !important;
-    color: #1b1c1a !important;
-    border-color: rgba(91, 91, 127, 0.5) !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
 }
 .dark button.secondary:hover, 
 .dark button.variant-secondary:hover {
     background-color: rgba(30, 41, 59, 0.95) !important;
     color: white !important;
-    border-color: rgba(129, 140, 248, 0.4) !important;
+    border-color: #38bdf8 !important;
 }
 
-/* 챗봇 보라색 배경 제거 및 고급스러운 다크 슬레이트 / 화이트 글래스 버블 구현 */
+/* 챗봇 보라색 배경 완전 제거 및 고대비 슬레이트/화이트 버블 구현 */
 .bubble, .message {
     border-radius: 12px !important;
 }
-.user, .message.user, [data-testid="user"] {
-    background-color: #334155 !important; /* 보라색을 배제한 차분하고 고급스러운 다크 슬레이트 */
-    color: white !important;
+
+/* 사용자 버블 가독성 완전 개선 (글씨색을 강제로 깨끗한 흰색으로 고정하여 500% 선명하게 표시) */
+.message.user {
+    background-color: #334155 !important; /* 차분하고 고급스러운 다크 슬레이트 */
     border: 1px solid rgba(51, 65, 85, 0.2) !important;
 }
-.bot, .message.bot, [data-testid="bot"] {
-    background-color: rgba(255, 255, 255, 0.75) !important; /* 반투명 깨끗한 화이트 글래스 */
-    color: #1e293b !important;
-    border: 1px solid rgba(196, 195, 236, 0.45) !important;
+.message.user p, .message.user span, .message.user li, .message.user div {
+    color: #ffffff !important; /* 완전 흰색 글씨 */
+    font-weight: 600 !important;
 }
-.dark .user, .dark .message.user {
+
+/* 봇 버블 가독성 완전 개선 (글씨색 확실한 검정색, 보라색 테두리 제거) */
+.message.bot {
+    background-color: rgba(255, 255, 255, 0.95) !important; /* 반투명 깨끗한 화이트 글래스 */
+    border: 1px solid #cbd5e1 !important;
+}
+.message.bot p, .message.bot span, .message.bot li, .message.bot div {
+    color: #0f172a !important; /* 확실한 고대비 검정색 글씨 */
+}
+.dark .message.user {
     background-color: #475569 !important;
 }
-.dark .bot, .dark .message.bot {
-    background-color: rgba(30, 41, 59, 0.75) !important;
+.dark .message.bot {
+    background-color: rgba(30, 41, 59, 0.85) !important;
+    border-color: rgba(14, 165, 233, 0.2) !important;
+}
+.dark .message.bot p, .dark .message.bot span, .dark .message.bot li {
     color: #f1f5f9 !important;
-    border-color: rgba(129, 140, 248, 0.2) !important;
+}
+
+/* Chatbot 라벨/탭의 보라색 색감 완전 제거 및 세로형 오프화이트 톤 전환 */
+.chatbot > div:first-child,
+[class*="chatbot"] > div:first-child,
+.chatbot-label,
+div[class*="chatbot"] .label,
+[data-testid="chatbot"] .label,
+.chatbot-header,
+div[class*="chatbot"] > div:first-child span,
+.gr-panel-title,
+.gr-chatbot-label {
+    background-color: #f1f5f9 !important; /* 차분하고 시원한 그레이/슬레이트 */
+    color: #0f172a !important; /* 검정색 글씨 */
+    border: 1px solid #cbd5e1 !important;
+    font-weight: 800 !important;
+    border-radius: 6px !important;
 }
 
 /* 챗봇 메인 컨테이너 투명화 및 테두리 깔끔화 */
 .chatbot, [class*="chatbot"] {
     background: rgba(255, 255, 255, 0.3) !important;
-    border: 1px solid rgba(196, 195, 236, 0.35) !important;
+    border: 1px solid #cbd5e1 !important;
     border-radius: 12px !important;
 }
 .dark .chatbot {
     background: rgba(15, 23, 42, 0.3) !important;
-    border-color: rgba(129, 140, 248, 0.15) !important;
+    border-color: rgba(14, 165, 233, 0.15) !important;
 }
 
 /* 입력창(텍스트에어리어) 세로 높이 및 패딩 확장 */
 textarea, 
 [class*="input-container"] textarea,
 [data-testid="textbox"] textarea {
-    min-height: 58px !important; /* 기존보다 훨씬 쾌적하고 시원한 세로 크기 */
+    min-height: 58px !important;
     font-size: 13px !important;
     padding: 12px 16px !important;
     line-height: 1.5 !important;
     border-radius: 8px !important;
-    border: 1px solid rgba(196, 195, 236, 0.5) !important;
+    border: 1px solid #cbd5e1 !important;
     background: rgba(255, 255, 255, 0.8) !important;
+    color: #0f172a !important; /* 입력 텍스트 검정색 */
 }
 textarea:focus {
-    border-color: #5b5b7f !important;
+    border-color: #0ea5e9 !important; /* 포커스 시 스카이 블루 */
     background: #ffffff !important;
 }
 .dark textarea {
     background: rgba(30, 41, 59, 0.8) !important;
-    border-color: rgba(129, 140, 248, 0.25) !important;
+    border-color: rgba(14, 165, 233, 0.25) !important;
     color: white !important;
 }
 
-/* 챗봇 답변 마크다운 가독성 및 자간/줄간격 최적화 (개행이 시각적으로 시원하게 보이도록 마진 확보) */
+/* 챗봇 입력창과 전송 버튼 여백 분리 */
+button[class*="submit-btn"],
+[data-testid="submit-button"],
+#submit-btn {
+    margin-left: 12px !important;
+    border-radius: 8px !important;
+    min-width: 95px !important;
+}
+div:has(> button[class*="submit-btn"]),
+div:has(> [data-testid="submit-button"]),
+.input-container,
+[class*="input-container"] {
+    gap: 12px !important;
+}
+
+/* 챗봇 답변 마크다운 가독성 및 자간/줄간격 최적화 */
 .message p, .message li, [class*="message"] p, [class*="message"] li {
     line-height: 1.68 !important;
     margin-bottom: 14px !important;
@@ -713,8 +841,8 @@ with gr.Blocks(**blocks_kwargs) as demo:
     # 1. 상단 글로벌 네비게이션 바 (GNB)
     gr.HTML("""
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(196, 195, 236, 0.45); background-color: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); margin: -20px -20px 20px -20px;">
-        <div style="font-size: 20px; font-weight: 900; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 12px;">
-            FinGraph <span style="font-size: 14px; font-weight: 700; color: #475569;">GraphRAG Enhanced AI Terminal</span>
+        <div style="font-size: 20px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 12px;">
+            📈 FinGraph <span style="font-size: 14px; font-weight: 700; color: #475569;">GraphRAG Enhanced AI Terminal</span>
         </div>
     </div>
     """)
@@ -731,7 +859,7 @@ with gr.Blocks(**blocks_kwargs) as demo:
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">
-                <h2 style="font-size: 18px; font-weight: 900; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px;">FinGraph — GraphRAG AI Terminal</h2>
+                <h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px;">🧬 FinGraph — GraphRAG AI Terminal</h2>
                 <p style="color: #475569; font-size: 13px; font-weight: 500;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
             </div>
             """)

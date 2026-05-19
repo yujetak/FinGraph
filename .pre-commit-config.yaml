@@ -1,13 +1,22 @@
 repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.15.13
-  hooks:
-    # Run the linter.
-    - id: ruff-check
-    # Run the formatter.
-    - id: ruff-format
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: ''  # Use the sha / tag you want to point at
+  - repo: local
     hooks:
-    -   id: mypy      # 타입 검사
+      - id: ruff-check
+        name: Ruff Linter
+        entry: ruff check .
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: mypy-strict
+        name: MyPy Strict Type Check
+        entry: mypy src tests --ignore-missing-imports
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: gradio-smoke-test
+        name: Gradio Fail-Fast Validation
+        entry: .venv/bin/python3 -c "import app"
+        language: system
+        pass_filenames: false

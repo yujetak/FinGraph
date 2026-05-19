@@ -116,12 +116,25 @@ def chat(message: str, history: list) -> str:
 # 5. Gradio UI 구성
 # ──────────────────────────────────────────
 
-demo = gr.ChatInterface(
-    fn=chat,
-    chatbot=gr.Chatbot(height=500),
-    textbox=gr.Textbox(container=False, scale=7),
-    title="FinNode — AI 기업 트렌드 분석 챗봇",
-    description=(
+# Gradio 버전 동적 감지 및 테마 설정 분기 (로컬 6.x vs 원격 4.x 크래시 완벽 방지)
+try:
+    gradio_major = int(gr.__version__.split(".")[0])
+except Exception:
+    gradio_major = 4  # 기본값 백업
+
+theme_obj = gr.themes.Soft(
+    primary_hue="blue",
+    secondary_hue="slate",
+    neutral_hue="slate",
+    font=[gr.themes.GoogleFont("Outfit"), "sans-serif"]
+)
+
+interface_kwargs = {
+    "fn": chat,
+    "chatbot": gr.Chatbot(height=500),
+    "textbox": gr.Textbox(container=False, scale=7),
+    "title": "FinNode — AI 기업 트렌드 분석 챗봇",
+    "description": (
         "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.\n\n"
         "**예시 질문**\n"
         "- 삼성전자의 최근 AI 기술 트렌드는?\n"
@@ -129,18 +142,27 @@ demo = gr.ChatInterface(
         "- 어떤 기업이 LLM 기술을 개발하나요?\n"
         "- 최근 AI 관련 뉴스 기사를 요약해줘"
     ),
-    examples=[
+    "examples": [
         "삼성전자의 최근 AI 기술 트렌드는?",
         "카카오가 개발 중인 AI 서비스 목록을 알려줘",
         "어떤 기업이 LLM 기술을 개발하나요?",
         "최근 AI 관련 뉴스 기사를 요약해줘",
     ],
-    cache_examples=False,
-)
+    "cache_examples": False
+}
+
+launch_kwargs = {
+    "server_name": "0.0.0.0",
+    "server_port": 7860
+}
+
+# 버전에 맞춘 테마 주입 파이프라인
+if gradio_major < 5:
+    interface_kwargs["theme"] = theme_obj
+else:
+    launch_kwargs["theme"] = theme_obj
+
+demo = gr.ChatInterface(**interface_kwargs)
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0", 
-        server_port=7860, 
-        theme=gr.themes.Soft(primary_hue="indigo")
-    )
+    demo.launch(**launch_kwargs)

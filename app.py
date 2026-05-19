@@ -160,18 +160,18 @@ def get_db_stats() -> Dict[str, Any]:
             if res_techs:
                 stats["technologies"] = res_techs["cnt"]
 
-            # 2. 기술 목록 & 설명 조회 (상위 25개)
+            # 2. 기술 목록 & 설명 조회 (상위 8개)
             res_tech_list = session.run(
                 "MATCH (t:AITechnology) "
-                "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 25"
+                "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 8"
             )
             stats["techs_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_tech_list]
 
-            # 3. 최근 기사 목록 조회 (최근 15개)
+            # 3. 최근 기사 목록 조회 (최근 4개)
             res_art_list = session.run(
                 "MATCH (a:Article) "
                 "RETURN a.title as title, a.published_date as date, a.url as url "
-                "ORDER BY a.published_date DESC LIMIT 15"
+                "ORDER BY a.published_date DESC LIMIT 4"
             )
             stats["recent_articles"] = [
                 {"title": r["title"], "date": r["date"], "url": r["url"]}
@@ -193,7 +193,7 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
     if not keyword_html:
         keyword_html = '<div style="font-size:12px; color:#94a3b8;">등록된 키워드가 없습니다.</div>'
 
-    # 2. 최근 기사 리스트 HTML 생성 (최대 3개) - 전체 영역 클릭 시 이동하도록 a 태그로 래핑
+    # 2. 최근 기사 리스트 HTML 생성 (최대 4개) - 전체 영역 클릭 시 이동하도록 a 태그로 래핑
     news_list_html: str = ""
     for a in stats.get("recent_articles", []):
         title = a["title"]
@@ -218,28 +218,49 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         <!-- Ambient background elements for beautiful glass effects -->
         <div class="ambient-glow"></div>
         
-        <div style="font-size: 16px; font-weight: 850; color: #5b5b7f; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; letter-spacing: -0.02em;">
+        <div style="font-size: 16px; font-weight: 850; color: #334155; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; letter-spacing: -0.02em;">
             📊 <span>FinGraph AI Terminal</span>
         </div>
-        <p style="font-size: 11px; color: #47464e; margin-top: -2px; margin-bottom: 12px; font-weight: 500;">GraphRAG 실시간 분석 엔진</p>
+        <p style="font-size: 11px; color: #475569; margin-top: -2px; margin-bottom: 12px; font-weight: 600;">GraphRAG 실시간 분석 엔진 상태</p>
         
+        <!-- 실시간 엔진 텔레메트리 (4개 메트릭) -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-lbl">📰 학습 기사</div>
-                <div class="stat-val">{stats['articles']}건</div>
+                <div class="stat-lbl">💡 분석 모델</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">GPT-4o</div>
             </div>
             <div class="stat-card">
+                <div class="stat-lbl">🧬 검색 모드</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">Hybrid (Graph+Vector)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-lbl">⚡ 응답 방식</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">Streaming</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-lbl">🔐 DB 연결</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #10b981;">AuraDB (Active)</div>
+            </div>
+        </div>
+
+        <!-- 수집된 데이터 규모 -->
+        <div class="stats-grid" style="margin-top: 10px; margin-bottom: 15px;">
+            <div class="stat-card" style="padding: 8px 10px;">
+                <div class="stat-lbl">📰 학습 기사</div>
+                <div class="stat-val" style="color: #334155;">{stats['articles']}건</div>
+            </div>
+            <div class="stat-card" style="padding: 8px 10px;">
                 <div class="stat-lbl">🧬 지식 노드</div>
-                <div class="stat-val">{node_count}개</div>
+                <div class="stat-val" style="color: #334155;">{node_count}개</div>
             </div>
         </div>
         
-        <div class="section-subtitle">💡 최신 뉴스 키워드</div>
+        <div class="section-subtitle" style="color: #334155;">💡 최신 뉴스 키워드</div>
         <div class="keyword-container">
             {keyword_html}
         </div>
         
-        <div class="section-subtitle">📰 최신 뉴스 피드</div>
+        <div class="section-subtitle" style="color: #334155;">📰 최신 뉴스 피드</div>
         <div class="news-feed-container">
             <div class="news-feed">
                 {news_list_html}
@@ -511,24 +532,24 @@ body {
     border-color: rgba(129, 140, 248, 0.6) !important;
 }
 
-/* 챗봇 버튼 퍼플 포인트 스타일 (흰색으로 안 보이던 현상 해결) */
+/* 챗봇 버튼 다크 슬레이트 스타일 (보라색 제거 및 세련된 네이비/슬레이트 통일) */
 button.primary, 
 .primary-btn, 
 button.lg.primary, 
 button.sm.primary,
 button.variant-primary {
-    background-color: #5b5b7f !important;
+    background-color: #334155 !important;
     color: white !important;
     font-weight: 800 !important;
     border: none !important;
-    box-shadow: 0 4px 6px rgba(91, 91, 127, 0.2) !important;
+    box-shadow: 0 4px 6px rgba(51, 65, 85, 0.15) !important;
     transition: all 0.2s ease-in-out !important;
 }
 button.primary:hover, 
 .primary-btn:hover, 
 button.variant-primary:hover {
-    background-color: #434466 !important;
-    box-shadow: 0 6px 12px rgba(91, 91, 127, 0.3) !important;
+    background-color: #1e293b !important;
+    box-shadow: 0 6px 12px rgba(51, 65, 85, 0.25) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -691,14 +712,14 @@ with gr.Blocks(**blocks_kwargs) as demo:
     """)
     
     with gr.Row():
-        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 4:6 split을 위해 scale=4 설정
-        with gr.Column(scale=4, min_width=350):
+        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 3:7 split을 위해 scale=3 설정
+        with gr.Column(scale=3, min_width=320):
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
             
-        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 4:6 split을 위해 scale=6 설정
-        with gr.Column(scale=6, min_width=500):
+        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 3:7 split을 위해 scale=7 설정
+        with gr.Column(scale=7, min_width=500):
             # 메인 타이틀 (챗봇 영역 상단 중앙)
             gr.HTML("""
             <div style="text-align: center; padding: 10px 0 20px 0;">

@@ -115,6 +115,13 @@ def test_4_core_scenarios():
 - [x] **3. 환각(Hallucination) 방지 프롬프트 강화**: `finRetrieval.py`의 프롬프트에 "반드시 제공된 검색 결과 기반으로만 답변하고, 없는 기업이나 가짜 URL(example.com 등)은 절대 지어내지 말 것"을 명시. (철벽 프롬프트 가드레일 설계 완료)
 - [x] **4. 4대 핵심 시나리오 최종 통과**: `tests/smoke_test_rag.py`를 재실행하여 가짜 링크나 외부 지식 개입 없이, 수집된 국내 뉴스 기반으로 완벽히 답변하는지 검증. (하이브리드 예비 검색기 및 Text2Cypher 결합으로 4대 골드 시나리오 완전 PASS 검증 성공)
 
+## 개발 체크리스트 (UI/UX 시각적 개선 단계)
+- [x] **1. 대시보드 통계 조회 구현**: Neo4j 연동하여 노드 카운트, 기업/기술 뱃지 및 최신 뉴스 피드 조회 기능 구현
+- [x] **2. 2컬럼 Blocks 레이아웃 개편**: 왼쪽 컬럼에 HTML/CSS 대시보드 삽입 및 오른쪽 컬럼에 챗봇 컴포넌트 이식
+- [x] **3. 커스텀 CSS 및 버튼 고대비화**: 흰색 배경에서 버튼이 완벽하게 보이도록 고대비 Indigo/Blue 색상 및 프리미엄 스타일 지정
+- [x] **4. 정적/동적 방어 테스트**: Ruff/Mypy 통과, `python -c "import app"` 정상 빌드, `smoke_test_rag.py` 성공 검증
+
+
 ## 배포 및 자동화 파이프라인 (Pipeline Automation)
 - [x] **매일 새벽 1시(KST) 최신화 파이프라인 구축**: 크롤링(`finScrapping.py`) ➡️ 지식 그래프 적재(`finGraph.py`)로 이어지는 엔드투엔드(End-to-End) 자동화.
   - **현재 상태: 비활성화 (Temporarily Disabled)**

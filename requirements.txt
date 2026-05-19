@@ -1,0 +1,16 @@
+# GraphRAG 핵심
+neo4j-graphrag[openai]
+langchain-openai
+langgraph
+
+# Gradio UI (HF Spaces 배포)
+gradio>=4.0.0
+
+# 데이터 크롤링 및 처리
+selenium
+webdriver-manager
+pandas
+openpyxl
+
+# 환경변수 관리
+python-dotenv

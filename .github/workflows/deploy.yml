@@ -1,0 +1,29 @@
+name: Sync to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+  # 수동 실행 허용
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push and Sync to Hugging Face
+        env:
+          # GitHub Repository Secrets에 저장된 변수들을 환경변수로 로드합니다.
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_REPO }}
+        run: |
+          # 1. Hugging Face Spaces 저장소를 동적 환경변수 기반 원격 추가
+          git remote add hf https://huggingface.co/spaces/$HF_REPO || true
+          
+          # 2. 강제 동기화 푸시 (인증 패스워드 자리에 HF_TOKEN 주입)
+          git push --force https://user:$HF_TOKEN@huggingface.co/spaces/$HF_REPO main

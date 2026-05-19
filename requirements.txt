@@ -3,9 +3,9 @@ neo4j-graphrag[openai]
 langchain-openai
 langgraph
 
-# Gradio UI (HF 배포 시 HfFolder 충돌 방지용)
-gradio>=4.44.1
-huggingface_hub<1.0.0
+# Gradio UI
+gradio>=6.0.0
+huggingface_hub>=0.20.0
 
 # 데이터 크롤링 및 처리
 selenium

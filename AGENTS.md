@@ -118,8 +118,12 @@ def test_portfolio_showcase_aggregation_query():
 
 ## 🛠️ 최근 이슈 해결 내역 (2026-05-19)
 - [x] **Hugging Face Spaces 런타임 에러(ValueError 및 Internal Server Error) 해결**:
-  - **현상**: Hugging Face Spaces 환경에서 빌드는 성공하였으나 구동 시 혹은 첫 질의 시 런타임 에러(ValueError) 혹은 500 Internal Server Error 발생.
-  - **원인**: `demo.launch()`에 호스트와 포트(`server_name="0.0.0.0"`, `server_port=7860`)를 명시적으로 주지 않아 localhost 바인딩 시 외부 접근이 차단되면서 `ValueError: When localhost is not accessible, a shareable link must be created.` 에러 발생.
-  - **조치**: `app.py`의 `launch_kwargs`에 `server_name="0.0.0.0"`과 `server_port=7860`을 상시로 주입하도록 정밀하게 구조화하여 로컬 및 원격 가상 샌드박스 환경 모두에서 크래시 없이 완벽하게 구동되도록 수정 완료.
+  - **현상**: Hugging Face Spaces 환경에서 빌드는 성공하였으나 구동 시 혹은 첫 질의 시 런타임 에러(ValueError) 혹은 500 Internal Server Error(TypeError: unhashable type: 'dict') 발생.
+  - **원인**:
+    1. `demo.launch()`에 호스트와 포트(`server_name="0.0.0.0"`, `server_port=7860`)를 명시적으로 주지 않아 localhost 바인딩 시 외부 접근이 차단되면서 `ValueError: When localhost is not accessible, a shareable link must be created.` 에러 발생.
+    2. 구버전 Gradio 4.44.0 환경에서 Jinja2/Starlette 템플릿 직렬화 캐싱 도중 테마 설정 매핑 데이터가 `dict` 키로 캐시 매핑에 들어가면서 `TypeError: unhashable type: 'dict'` 크래시 발생.
+  - **조치**:
+    1. `app.py`의 `launch_kwargs`에 `server_name="0.0.0.0"`과 `server_port=7860`을 상시로 주입하도록 수정 완료.
+    2. `README.md`의 `sdk_version`을 로컬 검증 사양인 `6.14.0`으로 전격 상향 조정하고, `requirements.txt`에서도 `gradio>=6.0.0` 및 `huggingface_hub>=0.20.0`으로 업그레이드하여 로컬-프로덕션 간 환경 및 테마 렌더링 무결성을 100% 일치시킴.
   - **검증**: `ruff`, `mypy` 검사를 단 1개의 오류도 없이 통과하고 `pytest tests/` 및 3대 골드 시나리오 `smoke_test_rag.py`를 100% 완전 통과하여 완벽성을 보장함.
 

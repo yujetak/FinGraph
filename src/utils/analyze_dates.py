@@ -6,7 +6,6 @@ analyze_dates.py — 수집된 뉴스 기사 발행 일자 트렌드 분석 및 
 import glob
 import os
 import platform
-from datetime import datetime
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -71,7 +70,7 @@ def run_analysis():
         recommendation = "✨ 5일~1주에 1회 갱신 (AI 핀테크 틈새 도메인 특성상 일일 발행량이 3건 미만으로 협소하므로, 5일 간격으로 몰아서 갱신하는 것이 합리적입니다.)"
 
     print("-" * 50)
-    print(f"💡 [최적의 GraphRAG 자동화 주기 제안]")
+    print("💡 [최적의 GraphRAG 자동화 주기 제안]")
     print(f"   {recommendation}")
     print("=" * 50 + "\n")
 

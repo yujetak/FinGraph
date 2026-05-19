@@ -158,8 +158,10 @@ tools_retriever = ToolsRetriever(
 )
 
 from typing import Any
+
 from neo4j_graphrag.retrievers.base import Retriever
 from neo4j_graphrag.types import RawSearchResult, RetrieverResult
+
 
 class HybridFallbackRetriever(Retriever):
     VERIFY_NEO4J_VERSION = False

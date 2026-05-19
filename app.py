@@ -546,20 +546,48 @@ else:
 
 # Blocks를 활용한 2컬럼 레이아웃 대시보드 개편
 with gr.Blocks(**blocks_kwargs) as demo:
-    # 상단 대형 타이틀 및 설명
-    gr.HTML("<h1 style='text-align: center; font-size: 28px; font-weight: 800; color: #4f46e5; margin-top: 20px; margin-bottom: 5px;'>FinNode — AI 기업 트렌드 분석 챗봇</h1>")
-    gr.Markdown("<p style='text-align: center; color: #64748b; font-size: 14px; margin-bottom: 25px;'>최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>")
+    # 1. 상단 글로벌 네비게이션 바 (GNB)
+    gr.HTML("""
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; background-color: white; margin: -20px -20px 20px -20px;">
+        <div style="font-size: 20px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 12px;">
+            FinNode <span style="font-size: 14px; font-weight: 600; color: #4f46e5;">GraphRAG 기반 엔터프라이즈 분석</span>
+        </div>
+        <div style="display: flex; gap: 18px; color: #64748b; font-size: 18px; cursor: pointer;">
+            <span>🔔</span> <span>⚙️</span> <span>👤</span>
+        </div>
+    </div>
+    """)
     
     with gr.Row():
-        # 왼쪽 컬럼: 실시간 지식 그래프 요약 대시보드 (scale=1)
-        with gr.Column(scale=1, min_width=350):
+        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴)
+        with gr.Column(scale=1, min_width=300):
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
             
-        # 오른쪽 컬럼: 자연어 RAG 챗봇 인터페이스 (scale=2)
-        with gr.Column(scale=2):
-            # 중복 노출을 방지하기 위해 상단 타이틀/설명은 ChatInterface kwargs에서 제거
+            # 사이드바 하단 도움말/설정 메뉴
+            gr.HTML("""
+            <div style="margin-top: 15px; padding: 15px 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #475569; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s;" onmouseover="this.style.color='#4f46e5'" onmouseout="this.style.color='#475569'">
+                    <span style="font-size:16px;">❔</span> 도움말
+                </div>
+                <div style="cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s;" onmouseover="this.style.color='#4f46e5'" onmouseout="this.style.color='#475569'">
+                    <span style="font-size:16px;">👤</span> 사용자 설정
+                </div>
+            </div>
+            """)
+            
+        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어
+        with gr.Column(scale=3):
+            # 메인 타이틀 (챗봇 영역 상단 중앙)
+            gr.HTML("""
+            <div style="text-align: center; padding: 10px 0 20px 0;">
+                <h2 style="font-size: 18px; font-weight: 700; color: #334155; margin-bottom: 5px;">FinNode — AI 기업 트렌드 분석 챗봇</h2>
+                <p style="color: #64748b; font-size: 13px;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
+            </div>
+            """)
+            
+            # ChatInterface without redundant titles/descriptions
             chatbot_interface_kwargs = interface_kwargs.copy()
             chatbot_interface_kwargs.pop("title", None)
             chatbot_interface_kwargs.pop("description", None)

@@ -116,42 +116,31 @@ def chat(message: str, history: list) -> str:
 # 5. Gradio UI 구성
 # ──────────────────────────────────────────
 
-with gr.Blocks(
+demo = gr.ChatInterface(
+    fn=chat,
+    chatbot=gr.Chatbot(height=500),
+    textbox=gr.Textbox(container=False, scale=7),
     title="FinNode — AI 기업 트렌드 분석 챗봇",
-    theme=gr.themes.Soft(primary_hue="indigo"),
-) as demo:
-    gr.Markdown(
-        """
-        # 🔗 FinNode — AI 기업 트렌드 분석 챗봇
-        > 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.
-
-        **예시 질문**
-        - 삼성전자의 최근 AI 기술 트렌드는?
-        - 카카오가 개발 중인 AI 서비스 목록을 알려줘
-        - 어떤 기업이 LLM 기술을 개발하나요?
-        - 최근 AI 관련 뉴스 기사를 요약해줘
-        """
-    )
-
-    chatbot = gr.ChatInterface(
-        fn=chat,
-        chatbot=gr.Chatbot(
-            height=500,
-            placeholder="질문을 입력하면 지식 그래프에서 답변을 찾아드립니다.",
-        ),
-        textbox=gr.Textbox(
-            placeholder="예: 네이버의 AI 기술 트렌드는 무엇인가요?",
-            container=False,
-            scale=7,
-        ),
-        examples=[
-            "삼성전자의 최근 AI 기술 트렌드는?",
-            "카카오가 개발 중인 AI 서비스 목록을 알려줘",
-            "어떤 기업이 LLM 기술을 개발하나요?",
-            "최근 AI 관련 뉴스 기사를 요약해줘",
-        ],
-        cache_examples=False,
-    )
+    description=(
+        "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.\n\n"
+        "**예시 질문**\n"
+        "- 삼성전자의 최근 AI 기술 트렌드는?\n"
+        "- 카카오가 개발 중인 AI 서비스 목록을 알려줘\n"
+        "- 어떤 기업이 LLM 기술을 개발하나요?\n"
+        "- 최근 AI 관련 뉴스 기사를 요약해줘"
+    ),
+    examples=[
+        "삼성전자의 최근 AI 기술 트렌드는?",
+        "카카오가 개발 중인 AI 서비스 목록을 알려줘",
+        "어떤 기업이 LLM 기술을 개발하나요?",
+        "최근 AI 관련 뉴스 기사를 요약해줘",
+    ],
+    cache_examples=False,
+)
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(
+        server_name="0.0.0.0", 
+        server_port=7860, 
+        theme=gr.themes.Soft(primary_hue="indigo")
+    )

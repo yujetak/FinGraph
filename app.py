@@ -134,15 +134,12 @@ def get_db_stats() -> Dict[str, Any]:
     """Neo4j 데이터베이스로부터 실시간 지식 그래프 통계 및 요약을 안전하게 조회합니다.
 
     Returns:
-        Dict[str, Any]: 기사 건수, 기업 수, 기술 수, 서비스 수, 분야 수, 벡터 청크 수 및 세부 목록
+        Dict[str, Any]: 기사 건수, 기업 수, 기술 수, 세부 설명 목록
     """
     stats: Dict[str, Any] = {
         "articles": 0,
         "companies": 0,
         "technologies": 0,
-        "services": 0,
-        "fields": 0,
-        "chunks": 0,
         "companies_list": [],
         "techs_list": [],
         "recent_articles": [],
@@ -164,30 +161,24 @@ def get_db_stats() -> Dict[str, Any]:
             if res_techs:
                 stats["technologies"] = res_techs["cnt"]
 
-            res_services = session.run("MATCH (s:AIService) RETURN count(s) as cnt").single()
-            if res_services:
-                stats["services"] = res_services["cnt"]
+            # 2. 기업 및 기술 목록 & 설명 조회 (상위 5개)
+            res_comp_list = session.run(
+                "MATCH (c:AICompany) "
+                "RETURN c.name as name, COALESCE(c.description, '최근 주목받는 AI 핵심 기업') as desc LIMIT 5"
+            )
+            stats["companies_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_comp_list]
 
-            res_fields = session.run("MATCH (f:AIField) RETURN count(f) as cnt").single()
-            if res_fields:
-                stats["fields"] = res_fields["cnt"]
+            res_tech_list = session.run(
+                "MATCH (t:AITechnology) "
+                "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 5"
+            )
+            stats["techs_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_tech_list]
 
-            res_chunks = session.run("MATCH (c:Content) RETURN count(c) as cnt").single()
-            if res_chunks:
-                stats["chunks"] = res_chunks["cnt"]
-
-            # 2. 기업 및 기술 목록 조회 (상위 15개)
-            res_comp_list = session.run("MATCH (c:AICompany) RETURN c.name as name LIMIT 15")
-            stats["companies_list"] = [r["name"] for r in res_comp_list]
-
-            res_tech_list = session.run("MATCH (t:AITechnology) RETURN t.name as name LIMIT 15")
-            stats["techs_list"] = [r["name"] for r in res_tech_list]
-
-            # 3. 최근 기사 목록 조회 (최근 5개)
+            # 3. 최근 기사 목록 조회 (최근 3개)
             res_art_list = session.run(
                 "MATCH (a:Article) "
                 "RETURN a.title as title, a.published_date as date, a.url as url "
-                "ORDER BY a.published_date DESC LIMIT 5"
+                "ORDER BY a.published_date DESC LIMIT 3"
             )
             stats["recent_articles"] = [
                 {"title": r["title"], "date": r["date"], "url": r["url"]}
@@ -200,23 +191,33 @@ def get_db_stats() -> Dict[str, Any]:
 
 def build_stats_html(stats: Dict[str, Any]) -> str:
     """조회된 지식 그래프 통계 정보들을 바탕으로 미려하고 컴팩트한 대시보드용 HTML을 생성합니다."""
-    # 1. 기업 뱃지 HTML 생성 (상위 최대 8개)
-    comp_badges: str = ""
-    for c in stats.get("companies_list", [])[:8]:
-        comp_badges += f'<span class="badge-item">{c}</span>'
-    if not comp_badges:
-        comp_badges = '<span style="font-size:10px; color:#94a3b8;">등록된 기업이 없습니다.</span>'
+    # 1. 기업 리스트 HTML 생성
+    comp_html: str = ""
+    for c in stats.get("companies_list", []):
+        comp_html += f"""
+        <div class="definition-item">
+            <span class="definition-name">🏢 {c['name']}</span>
+            <span class="definition-desc">{c['desc']}</span>
+        </div>
+        """
+    if not comp_html:
+        comp_html = '<div style="font-size:10px; color:#94a3b8;">등록된 기업이 없습니다.</div>'
 
-    # 2. 기술 뱃지 HTML 생성 (상위 최대 8개)
-    tech_badges: str = ""
-    for t in stats.get("techs_list", [])[:8]:
-        tech_badges += f'<span class="badge-item tech-badge">{t}</span>'
-    if not tech_badges:
-        tech_badges = '<span style="font-size:10px; color:#94a3b8;">등록된 기술이 없습니다.</span>'
+    # 2. 기술 리스트 HTML 생성
+    tech_html: str = ""
+    for t in stats.get("techs_list", []):
+        tech_html += f"""
+        <div class="definition-item">
+            <span class="definition-name" style="color: #059669;">💡 {t['name']}</span>
+            <span class="definition-desc">{t['desc']}</span>
+        </div>
+        """
+    if not tech_html:
+        tech_html = '<div style="font-size:10px; color:#94a3b8;">등록된 기술이 없습니다.</div>'
 
     # 3. 최근 기사 리스트 HTML 생성 (최대 3개)
     news_list_html: str = ""
-    for a in stats.get("recent_articles", [])[:3]:
+    for a in stats.get("recent_articles", []):
         title = a["title"]
         url = a["url"] if a["url"] and str(a["url"]).lower() != "nan" else "#"
         target = 'target="_blank"' if url != "#" else ""
@@ -239,31 +240,27 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-lbl">📰 뉴스</div>
+                <div class="stat-lbl">📰 뉴스 기사</div>
                 <div class="stat-val">{stats['articles']}건</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">🏢 기업</div>
+                <div class="stat-lbl">🏢 핵심 기업</div>
                 <div class="stat-val">{stats['companies']}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">💡 기술</div>
+                <div class="stat-lbl">💡 주요 기술</div>
                 <div class="stat-val">{stats['technologies']}개</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-lbl">🧩 벡터 Chunks</div>
-                <div class="stat-val" style="color: #059669;">{stats['chunks']}개</div>
-            </div>
         </div>
         
-        <div class="section-subtitle">🏢 주요 분석 기업</div>
-        <div class="badge-container">
-            {comp_badges}
+        <div class="section-subtitle">🏢 주요 분석 기업 및 개요</div>
+        <div class="definition-list">
+            {comp_html}
         </div>
         
-        <div class="section-subtitle">💡 주요 핵심 기술</div>
-        <div class="badge-container">
-            {tech_badges}
+        <div class="section-subtitle">💡 주요 핵심 기술 및 정의</div>
+        <div class="definition-list">
+            {tech_html}
         </div>
         
         <div class="section-subtitle">📰 최신 뉴스 피드</div>
@@ -311,15 +308,15 @@ custom_css: str = """
 /* 통계 그리드 및 카드 */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
     margin-bottom: 12px;
 }
 .stat-card {
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 6px 8px;
+    padding: 6px 4px;
     text-align: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     transition: all 0.2s ease-in-out;
@@ -334,7 +331,7 @@ custom_css: str = """
     color: #f1f5f9;
 }
 .stat-val {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
     color: #4f46e5;
     margin-top: 2px;
@@ -343,7 +340,7 @@ custom_css: str = """
     color: #818cf8;
 }
 .stat-lbl {
-    font-size: 10px;
+    font-size: 9px;
     color: #64748b;
     font-weight: 500;
 }
@@ -351,55 +348,42 @@ custom_css: str = """
     color: #94a3b8;
 }
 
-/* 뱃지 리스트 스타일 */
-.badge-container {
+/* 주요 기업 및 기술 정의 리스트 스타일 */
+.definition-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 4px;
     margin-bottom: 10px;
 }
-.badge-item {
-    background-color: #e0e7ff;
-    color: #3730a3;
+.definition-item {
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
+}
+.dark .definition-item {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+.definition-name {
     font-size: 10px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 12px;
-    border: 1px solid #c7d2fe;
-    transition: all 0.2s;
+    font-weight: 700;
+    color: #4f46e5;
 }
-.badge-item:hover {
-    background-color: #4f46e5;
-    color: white;
-    transform: scale(1.05);
+.dark .definition-name {
+    color: #818cf8;
 }
-.dark .badge-item {
-    background-color: #1e1b4b;
-    color: #c7d2fe;
-    border-color: #312e81;
+.definition-desc {
+    font-size: 9px;
+    color: #475569;
+    line-height: 1.3;
 }
-.dark .badge-item:hover {
-    background-color: #818cf8;
-    color: #0f172a;
-}
-
-.tech-badge {
-    background-color: #ecfdf5;
-    color: #065f46;
-    border-color: #a7f3d0;
-}
-.tech-badge:hover {
-    background-color: #10b981;
-    color: white;
-}
-.dark .tech-badge {
-    background-color: #064e3b;
-    color: #a7f3d0;
-    border-color: #065f46;
-}
-.dark .tech-badge:hover {
-    background-color: #34d399;
-    color: #064e3b;
+.dark .definition-desc {
+    color: #cbd5e1;
 }
 
 /* 최근 뉴스 타임라인 및 스크롤바 스타일 */

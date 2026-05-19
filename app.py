@@ -566,6 +566,74 @@ button.variant-secondary:hover,
     color: white !important;
     border-color: rgba(129, 140, 248, 0.4) !important;
 }
+
+/* 챗봇 보라색 배경 제거 및 고급스러운 다크 슬레이트 / 화이트 글래스 버블 구현 */
+.bubble, .message {
+    border-radius: 12px !important;
+}
+.user, .message.user, [data-testid="user"] {
+    background-color: #334155 !important; /* 보라색을 배제한 차분하고 고급스러운 다크 슬레이트 */
+    color: white !important;
+    border: 1px solid rgba(51, 65, 85, 0.2) !important;
+}
+.bot, .message.bot, [data-testid="bot"] {
+    background-color: rgba(255, 255, 255, 0.75) !important; /* 반투명 깨끗한 화이트 글래스 */
+    color: #1e293b !important;
+    border: 1px solid rgba(196, 195, 236, 0.45) !important;
+}
+.dark .user, .dark .message.user {
+    background-color: #475569 !important;
+}
+.dark .bot, .dark .message.bot {
+    background-color: rgba(30, 41, 59, 0.75) !important;
+    color: #f1f5f9 !important;
+    border-color: rgba(129, 140, 248, 0.2) !important;
+}
+
+/* 챗봇 메인 컨테이너 투명화 및 테두리 깔끔화 */
+.chatbot, [class*="chatbot"] {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border: 1px solid rgba(196, 195, 236, 0.35) !important;
+    border-radius: 12px !important;
+}
+.dark .chatbot {
+    background: rgba(15, 23, 42, 0.3) !important;
+    border-color: rgba(129, 140, 248, 0.15) !important;
+}
+
+/* 입력창(텍스트에어리어) 세로 높이 및 패딩 확장 */
+textarea, 
+[class*="input-container"] textarea,
+[data-testid="textbox"] textarea {
+    min-height: 58px !important; /* 기존보다 훨씬 쾌적하고 시원한 세로 크기 */
+    font-size: 13px !important;
+    padding: 12px 16px !important;
+    line-height: 1.5 !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(196, 195, 236, 0.5) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
+}
+textarea:focus {
+    border-color: #5b5b7f !important;
+    background: #ffffff !important;
+}
+.dark textarea {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(129, 140, 248, 0.25) !important;
+    color: white !important;
+}
+
+/* 챗봇 답변 마크다운 가독성 및 자간/줄간격 최적화 (개행이 시각적으로 시원하게 보이도록 마진 확보) */
+.message p, .message li, [class*="message"] p, [class*="message"] li {
+    line-height: 1.68 !important;
+    margin-bottom: 14px !important;
+    letter-spacing: -0.01em !important;
+}
+.message h3, [class*="message"] h3 {
+    margin-top: 24px !important;
+    margin-bottom: 12px !important;
+    font-weight: 800 !important;
+}
 """
 
 interface_kwargs = {

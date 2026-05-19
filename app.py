@@ -151,9 +151,6 @@ with gr.Blocks(
             "최근 AI 관련 뉴스 기사를 요약해줘",
         ],
         cache_examples=False,
-        retry_btn=None,
-        undo_btn="↩️ 되돌리기",
-        clear_btn="🗑️ 대화 초기화",
     )
 
 if __name__ == "__main__":

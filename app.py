@@ -326,15 +326,21 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         </div>
 
         <!-- 수집된 데이터 규모 -->
-        <div class="stats-grid" style="margin-top: 10px; margin-bottom: 15px;">
+        <div class="stats-grid" style="margin-top: 10px; margin-bottom: 8px;">
             <div class="stat-card" style="padding: 8px 10px;">
-                <div class="stat-lbl">📰 실시간 수집 뉴스</div>
-                <div class="stat-val" style="color: #334155;">{stats['articles']}개</div>
+                <div class="stat-lbl">📰 분석용 뉴스 기사</div>
+                <div class="stat-val" style="color: #334155;">{stats['articles']}건</div>
             </div>
             <div class="stat-card" style="padding: 8px 10px;">
-                <div class="stat-lbl">🧬 인공지능 지식망</div>
+                <div class="stat-lbl">🧬 추출된 지식 연결망</div>
                 <div class="stat-val" style="color: #334155;">{node_count}개</div>
             </div>
+        </div>
+
+        <!-- 데이터 배경 정보 설명 패널 (사용자 이해를 돕는 배경 정보 친절 서술) -->
+        <div style="font-size: 11px; color: #475569; line-height: 1.5; margin-top: 8px; margin-bottom: 15px; padding: 10px; background: rgba(241, 245, 249, 0.7); border: 1px solid #cbd5e1; border-radius: 8px;">
+            ℹ️ <b>데이터 수집 배경 정보</b><br>
+            실시간 뉴스 웹 크롤러가 국내 IT/금융 기사 <b>{stats['articles']}건</b>을 정밀 수집하였으며, 뉴스 본문을 분석하여 기사 속 주요 기업·핵심 기술·서비스 간의 입체적 연관 관계 <b>{node_count}개</b>를 연결망(지식 그래프)으로 완벽하게 연동하였습니다.
         </div>
         
         <div class="section-subtitle" style="color: #334155;">💡 최신 뉴스 키워드</div>
@@ -588,39 +594,39 @@ body {
 [class*="examples"] button {
     text-align: left !important;
     padding: 14px 18px !important;
-    background: #f0fdf4 !important; /* 싱그러운 민트/연그린 배경 */
-    border: 1px solid #86efac !important; /* 라이트 에메랄드 테두리 */
+    background: #ffffff !important; /* 깨끗하고 단정한 화이트 */
+    border: 1px solid #cbd5e1 !important; /* 소프트한 슬레이트 테두리 */
     border-radius: 10px !important;
-    font-size: 12px !important;
-    font-weight: 750 !important;
-    color: #0f766e !important; /* 깊이 있는 테일 그린 글씨 */
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #0f172a !important; /* 단정한 검정색 */
     line-height: 1.4 !important;
-    box-shadow: 0 3px 6px rgba(20, 184, 166, 0.05) !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.2s ease-in-out !important;
     white-space: normal !important;
     height: auto !important;
     min-height: 54px !important;
     cursor: pointer !important;
 }
 .dark [class*="examples"] button {
-    background: rgba(20, 184, 166, 0.1) !important;
-    border-color: rgba(45, 212, 191, 0.3) !important;
-    color: #99f6e4 !important;
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    color: #e2e8f0 !important;
 }
 [class*="examples"] button:hover {
-    transform: translateY(-2px) !important;
-    background: #dcfce7 !important; /* 호버 시 약간 더 짙은 민트 */
-    border-color: #4ade80 !important;
-    color: #15803d !important;
-    box-shadow: 0 6px 12px rgba(20, 184, 166, 0.12) !important;
+    transform: translateY(-1px) !important;
+    background: #f8fafc !important; /* 아주 옅은 오프화이트 호버 */
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06) !important;
 }
 .dark [class*="examples"] button:hover {
-    background: rgba(20, 184, 166, 0.25) !important;
-    border-color: #2dd4bf !important;
+    background: rgba(30, 41, 59, 0.85) !important;
+    border-color: rgba(148, 163, 184, 0.4) !important;
     color: #ffffff !important;
 }
 
-/* 챗봇 버튼 확실한 블루 포인트 스타일 (전송 버튼 분리 및 이미지 속 파란 서클 컬러 100% 동기화) */
+/* 챗봇 전송 버튼 프리미엄 다크 슬레이트 스타일 (이상한 그라데이션 제거, 단정하고 일관성 있는 색감) */
 button.primary, 
 .primary-btn, 
 button.lg.primary, 
@@ -628,12 +634,12 @@ button.sm.primary,
 button.variant-primary,
 button[class*="submit-btn"],
 [data-testid="submit-button"] {
-    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important; /* 선명한 오션 블루 그라데이션 */
+    background: #1e293b !important; /* 프리미엄 다크 슬레이트 차콜 */
     color: white !important;
-    font-weight: 850 !important;
-    border: none !important;
+    font-weight: 700 !important;
+    border: 1px solid #0f172a !important;
     border-radius: 8px !important;
-    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2) !important;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08) !important;
     transition: all 0.2s ease-in-out !important;
     cursor: pointer !important;
 }
@@ -642,8 +648,8 @@ button.primary:hover,
 button.variant-primary:hover,
 button[class*="submit-btn"]:hover,
 [data-testid="submit-button"]:hover {
-    background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%) !important;
-    box-shadow: 0 6px 12px rgba(37, 99, 235, 0.35) !important;
+    background: #0f172a !important; /* 호버 시 딥 블랙 */
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.15) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -717,7 +723,7 @@ button.variant-secondary:hover,
     color: #f1f5f9 !important;
 }
 
-/* Chatbot 라벨/탭의 보라색 색감 완전 제거 및 세로형 오프화이트 톤 전환 */
+/* Chatbot 라벨/탭 완전 숨김 (불필요한 보라색/하늘색 색상 및 테두리 원천 차단) */
 .chatbot > div:first-child,
 [class*="chatbot"] > div:first-child,
 .chatbot-label,
@@ -727,11 +733,7 @@ div[class*="chatbot"] .label,
 div[class*="chatbot"] > div:first-child span,
 .gr-panel-title,
 .gr-chatbot-label {
-    background-color: #f1f5f9 !important; /* 차분하고 시원한 그레이/슬레이트 */
-    color: #0f172a !important; /* 검정색 글씨 */
-    border: 1px solid #cbd5e1 !important;
-    font-weight: 800 !important;
-    border-radius: 6px !important;
+    display: none !important;
 }
 
 /* 챗봇 메인 컨테이너 투명화 및 테두리 깔끔화 */
@@ -745,18 +747,23 @@ div[class*="chatbot"] > div:first-child span,
     border-color: rgba(14, 165, 233, 0.15) !important;
 }
 
-/* 입력창(텍스트에어리어) 세로 높이 및 패딩 확장 */
+/* 입력창(텍스트에어리어) 세로 높이 및 단일 행 수직 중앙 정렬 최적화 */
 textarea, 
 [class*="input-container"] textarea,
 [data-testid="textbox"] textarea {
+    height: 58px !important;
     min-height: 58px !important;
+    max-height: 58px !important;
     font-size: 13px !important;
-    padding: 12px 16px !important;
+    padding: 18px 16px !important; /* 위아래 패딩을 18px로 대칭 조절하여 텍스트가 수직 정중앙에 완벽하게 배치 */
     line-height: 1.5 !important;
     border-radius: 8px !important;
     border: 1px solid #cbd5e1 !important;
     background: rgba(255, 255, 255, 0.8) !important;
     color: #0f172a !important; /* 입력 텍스트 검정색 */
+    resize: none !important; /* 세로 크기 조절 방지 */
+    overflow-y: hidden !important; /* 스크롤바 감춤 */
+    box-sizing: border-box !important;
 }
 textarea:focus {
     border-color: #0ea5e9 !important; /* 포커스 시 스카이 블루 */
@@ -768,26 +775,45 @@ textarea:focus {
     color: white !important;
 }
 
-/* 챗봇 입력창과 전송 버튼 여백 분리 */
+/* 챗봇 입력창과 전송 버튼 세로 높이 완벽 동기화 및 여백 분리 */
 button[class*="submit-btn"],
 [data-testid="submit-button"],
 #submit-btn {
     margin-left: 12px !important;
     border-radius: 8px !important;
     min-width: 95px !important;
+    height: 58px !important; /* 입력창의 height(58px)와 100% 동일하게 일치시켜 완벽한 대칭 구조 달성 */
+    padding: 0 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
 }
 div:has(> button[class*="submit-btn"]),
 div:has(> [data-testid="submit-button"]),
 .input-container,
 [class*="input-container"] {
     gap: 12px !important;
+    align-items: center !important; /* 수직축 기준으로 중앙 정렬 */
 }
 
-/* 챗봇 답변 마크다운 가독성 및 자간/줄간격 최적화 */
+/* 챗봇 답변 마크다운 가독성 및 자간/줄간격 최적화 (인라인 요양의 수직 선/보더 원천 차단) */
 .message p, .message li, [class*="message"] p, [class*="message"] li {
     line-height: 1.68 !important;
     margin-bottom: 14px !important;
     letter-spacing: -0.01em !important;
+    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    box-shadow: none !important;
+}
+.message blockquote, [class*="message"] blockquote {
+    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
 }
 .message h3, [class*="message"] h3 {
     margin-top: 24px !important;
@@ -803,10 +829,8 @@ interface_kwargs = {
         placeholder="분석하고 싶은 내용을 자연어로 입력해주세요...",
         container=False,
         scale=7,
-        submit_btn="전송 📤",
+        submit_btn="전송",
     ),
-    "title": "FinGraph — GraphRAG AI Terminal",
-    "description": "> 최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.",
     "examples": [
         "삼성전자의 최근 AI 기술 트렌드는?",
         "카카오가 개발 중인 AI 서비스 목록을 알려줘",
@@ -856,14 +880,6 @@ with gr.Blocks(**blocks_kwargs) as demo:
             
         # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 3:7 split을 위해 scale=7 설정
         with gr.Column(scale=7, min_width=500):
-            # 메인 타이틀 (챗봇 영역 상단 중앙)
-            gr.HTML("""
-            <div style="text-align: center; padding: 10px 0 20px 0;">
-                <h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px;">🧬 FinGraph — GraphRAG AI Terminal</h2>
-                <p style="color: #475569; font-size: 13px; font-weight: 500;">최신 AI 뉴스를 기반으로 구축된 지식 그래프(GraphRAG)에서 답변합니다.</p>
-            </div>
-            """)
-            
             # ChatInterface without redundant titles/descriptions
             chatbot_interface_kwargs = interface_kwargs.copy()
             chatbot_interface_kwargs.pop("title", None)

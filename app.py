@@ -123,7 +123,6 @@ with gr.Blocks(
 
     chatbot = gr.ChatInterface(
         fn=chat,
-        type="messages",          # Gradio 4.x 이상 표준 형식
         chatbot=gr.Chatbot(
             height=500,
             placeholder="질문을 입력하면 지식 그래프에서 답변을 찾아드립니다.",

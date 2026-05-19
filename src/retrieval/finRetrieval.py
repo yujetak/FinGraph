@@ -150,7 +150,9 @@ class HybridFallbackRetriever(Retriever):
 class CustomRagTemplate(RagTemplate):
     EXPECTED_INPUTS = ["context", "query_text"]
 
-    def format(self, query_text: str, context: str, **kwargs: Any) -> str:
+    def format(self, query_text: str, context: str, examples: str = "") -> str:
+        # 부모 시그니처(MyPy) 준수 및 Vulture 미사용 변수 검사 방어
+        _ = examples
         return self._format(query_text=query_text, context=context)
 
 

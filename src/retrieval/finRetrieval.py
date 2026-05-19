@@ -150,7 +150,7 @@ class HybridFallbackRetriever(Retriever):
 class CustomRagTemplate(RagTemplate):
     EXPECTED_INPUTS = ["context", "query_text"]
 
-    def format(self, query_text: str, context: str, examples: str = "") -> str:
+    def format(self, query_text: str, context: str, **kwargs: Any) -> str:
         return self._format(query_text=query_text, context=context)
 
 

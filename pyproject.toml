@@ -28,3 +28,8 @@ ban-relative-imports = "all"
 min_confidence = 80
 paths = ["src/"]
 ignore_names = ["test_*", "setUp", "tearDown"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]

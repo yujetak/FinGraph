@@ -1,7 +1,7 @@
 # pyproject.toml
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -11,7 +11,12 @@ select = [
     "I",   # isort (import 정렬)
     "N",   # 네이밍 규칙
 ]
-ignore = []
+ignore = [
+    "E501", # Line too long (줄 길이 초과는 지식 그래프/프롬프트 특성상 허용)
+    "N999", # Invalid module name (camelCase 파일명 허용)
+    "E402", # Module level import not at top of file (스크립트 중간 임포트 허용)
+    "E722", # Do not use bare except (크롤러의 포괄적 except 허용)
+]
 
 # 절대 import만 허용 (상대 import 금지)
 [tool.ruff.lint.flake8-tidy-imports]

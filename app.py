@@ -326,7 +326,7 @@ CHATBOT_DESCRIPTION = """
 
 interface_kwargs = {
     "fn": chat,
-    "chatbot": gr.Chatbot(height=650),
+    "chatbot": gr.Chatbot(height=700, placeholder=CHATBOT_DESCRIPTION),
     "textbox": gr.Textbox(
         placeholder="분석하고 싶은 내용을 자연어로 입력해주세요...",
         container=False,
@@ -374,17 +374,14 @@ with gr.Blocks(**blocks_kwargs) as demo:
     """)
     
     with gr.Row():
-        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 넓이를 줄이기 위해 scale=2 설정
-        with gr.Column(scale=2, min_width=280):
+        # 2. 왼쪽 컬럼: 사이드바 (대시보드 및 하단 메뉴) - 3:7 split을 위해 scale=3 설정
+        with gr.Column(scale=3, min_width=320):
             stats_data = get_db_stats()
             stats_html = build_stats_html(stats_data)
             gr.HTML(stats_html)
             
-        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 넓게 쓰기 위해 scale=8 설정
-        with gr.Column(scale=8, min_width=600):
-            # 우측 설명 영역 복구 (Chatbot placeholder 대신 HTML로 직접 렌더링)
-            gr.HTML(CHATBOT_DESCRIPTION)
-            
+        # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 3:7 split을 위해 scale=7 설정
+        with gr.Column(scale=7, min_width=500):
             # ChatInterface without redundant titles/descriptions
             chatbot_interface_kwargs = interface_kwargs.copy()
             chatbot_interface_kwargs.pop("title", None)

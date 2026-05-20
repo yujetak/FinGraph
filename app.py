@@ -11,6 +11,15 @@ Gradio ChatInterface + LangGraph 기반 대화 흐름 제어.
 from typing import Any, Dict, List, TypedDict
 
 import dotenv
+import gradio.networking
+
+# ──────────────────────────────────────────
+# HF Spaces/Docker 루프백 접속 검증 우회 몽키 패치
+# ──────────────────────────────────────────
+# 일부 가상화/도커 환경에서 127.0.0.1:7860 로컬 접속 여부 자체 체크가
+# 프록시 및 루프백 인터페이스 차단으로 인해 실패하여 ValueError가 발생하는 현상을 방지합니다.
+gradio.networking.url_ok = lambda *args, **kwargs: True
+
 import gradio as gr
 from langgraph.graph import END, StateGraph
 

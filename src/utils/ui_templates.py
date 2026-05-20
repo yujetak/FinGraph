@@ -62,7 +62,7 @@ body, .gradio-container {
 
 /* ── 패널 라벨 (섹션 제목) ── */
 .panel-label {
-    font-size: 11px;
+    font-size: 12.5px !important;
     font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
@@ -145,7 +145,7 @@ body, .gradio-container {
     border: 1px solid #ddd6fe !important;
     border-radius: 9999px !important;
     padding: 4px 12px !important;
-    font-size: 11px !important;
+    font-size: 12.5px !important;
     font-weight: 600 !important;
     color: #8b5cf6 !important;
 }
@@ -168,7 +168,7 @@ body, .gradio-container {
     border: 1px solid #ddd6fe !important;
     border-radius: 9999px !important;
     padding: 4px 12px !important;
-    font-size: 11px !important;
+    font-size: 12.5px !important;
     font-weight: 600 !important;
     color: #8b5cf6 !important;
 }
@@ -233,9 +233,11 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 
 /* ── 챗봇 내부 Placeholder(소개글 영역) ── */
 .placeholder, [class*="placeholder"] {
-    padding: 20px !important;
+    padding: 0 !important;
     overflow: auto !important;
     margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 920px !important;
 }
 
 /* ── 소개글(Prose) 웰컴 보드 (독립적인 프리미엄 라운드 카드 구조) ── */
@@ -255,7 +257,7 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 .placeholder h3, [class*="placeholder"] h3 {
     color: #334155 !important; 
     font-weight: 800 !important;
-    font-size: 21px !important;
+    font-size: 17.5px !important;
     margin-top: 0 !important;
     margin-bottom: 12px !important;
 }
@@ -267,15 +269,15 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 .placeholder .prose li {
     margin-bottom: 6px !important; 
     color: #475569 !important;
-    font-size: 17px !important;
+    font-size: 14.5px !important;
     line-height: 1.55 !important;
 }
 .placeholder .prose p {
-    font-size: 17px !important;
+    font-size: 14.5px !important;
     line-height: 1.55 !important;
 }
 .placeholder .prose p:last-child {
-    font-size: 17px !important;
+    font-size: 14.5px !important;
     font-weight: 700 !important;
     color: #4c1d95 !important; 
     background: #f3e8ff !important; 

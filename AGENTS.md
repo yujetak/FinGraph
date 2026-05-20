@@ -41,6 +41,9 @@ FinGraph/
 
 - **지식 그래프 적재 규칙 (Incremental Load)**: 기존 데이터를 전체 삭제(DETACH DELETE)하지 않고, 이미 적재된 기사(`article_id`) 및 청킹이 완료된 `Content` 노드는 OpenAI API(Chat/Embeddings) 호출 낭비와 속도 저하를 방지하기 위해 **반드시 초고속 스킵(Skip)**하도록 구현한다.
 - **Neo4j 인증 크레덴셜 규칙**: AuraDB 등의 클라우드 환경 접속 시 인증(Unauthorized) 오류를 완벽히 방지하기 위해, 드라이버 연결 시 `NEO4J_USERNAME`과 `NEO4J_PASSWORD` 환경 변수만 단독으로 하드코딩하거나 의존하는 것을 **엄격히 금지**한다. 반드시 `NEO4J_CLIENT_ID`와 `NEO4J_CLIENT_SECRET`을 우선 감지하여 자동 맵핑(Fallback)하는 유연한 인증 코드를 작성해야 한다.
+- **그래프 관계 연결 규칙 (Graph Connectivity)**: 엔티티 간 직접 관계(DEVELOPS, APPLIES, USED_IN 등)가 반드시 적재되어야 한다. `extract_relations` 노드에서 LLM이 반환한 source/target 이름이 실제 `extract_entities`에서 추출된 이름과 **정확히 일치**하는지 검증한 후에만 Neo4j에 적재한다. 엔티티가 2개 이상 추출되었음에도 관계가 0개인 경우 **최대 2회 자기반성(Self-Reflection) 루프로 재추출**을 강제한다.
+- **그래프 관계 밀도 기준 (Coverage)**: `smoke_test_rag.py`의 사전 점검 단계에서 **기사당 평균 엔티티 간 직접 관계 3.0개 이상**을 최소 기준으로 검증한다. 이 기준을 미달하면 파이프라인 재실행이 필요하다.
+- **LLM 모델 규칙 (Model Governance)**: 엔티티/관계 추출(`finGraph.py`)에는 **반드시 `gpt-4o`** 를 사용하여 그래프 품질을 최대화한다. RAG 검색 및 답변 생성(`finRetrieval.py`), 임베딩에는 `gpt-4o-mini`와 `text-embedding-3-small`을 사용한다. 비용 절감을 이유로 엔티티/관계 추출 모델을 `gpt-4o-mini`로 다운그레이드하는 것을 **엄격히 금지**한다.
 
 ## 절대 금지
 - 'src/references/' 파일 수정 금지(참고자료)
@@ -57,6 +60,11 @@ FinGraph/
 - **2. 프로덕션 Fail-Fast 자가 진단 필수 (침묵의 런타임 에러 방지)**
   - **원인**: 허깅페이스(HF Spaces) 배포 시 DB 연결 환경 변수가 누락되었음에도 불구하고 웹 앱은 정상적으로 켜진 척(Running) 하다가, 사용자가 처음 질문을 던진 순간 500 내부 에러를 뿜으며 뻗어버리는 심각한 운영 장애 발생.
   - **규칙**: 배포 진입점(`app.py`) 구동 시점에는 지연 초기화를 무시하고 강제로 즉시 연결(`graphrag._init_once()`)을 시도하여, 실패 시 앱 구동 자체를 실패시키는 `Fail-Fast` 자가 진단 코드를 `app.py` 상단에 반드시 유지할 것.
+
+- **4. 그래프 관계 연결 누락 (Graph Isolation Prevention)**
+  - **원인**: `extract_relations` 프롬프트의 JSON 지시문 오타(`공으로만:` 등)로 인해 LLM이 JSON을 정상 생성하지 못하거나, LLM이 반환한 source/target 이름이 `extract_entities`에서 뽑은 이름과 미세하게 달라(`AI` vs `인공지능`) 관계 필터에서 전량 제거되는 문제가 반복 발생. 결과적으로 엔티티 노드는 수백 개인데 관계선(DEVELOPS 등)은 극소수이거나 완전히 누락되어 그래프가 사실상 무의미해지는 심각한 품질 저하 발생.
+  - **규칙**: ①프롬프트에서 엔티티 이름 목록을 명시적으로 전달하여 LLM이 동일 이름을 그대로 사용하도록 강제. ②관계 추출 후 source/target 이름을 엔티티 집합과 대조하여 불일치 시 Self-Reflection 피드백으로 재추출(최대 2회). ③엔티티가 2개 이상인데 관계가 0개이면 경고 로그를 남기며, `smoke_test_rag.py`에서 **기사당 평균 3.0개 이상의 엔티티 관계** 기준을 자동 점검.
+  - **방어 테스트**: `python tests/smoke_test_rag.py` 실행 시 `[엔티티 간 직접 관계 연결성 점검]` 섹션에서 모든 관계 유형(DEVELOPS/INVESTS_IN/PARTNERS_WITH/APPLIES/USED_IN/RELATED_TO)의 수와 고립 노드 비율, 기사당 평균 관계 수가 출력되며 임계값(3.0) 이상임을 반드시 확인 후 커밋.
 
 - **3. 패키지 의존성 및 타입 엄격 검증 (Hugging Face 빌드 크래시 방지)**
   - **원인**: 로컬에서는 잘 돌아가는데, 허깅페이스 프로덕션 환경에서 `audioop`, `huggingface_hub` 등 모듈 누락이나 MyPy 타입 에러(`Format Error`)로 런타임 크래시가 3회 이상 발생.
@@ -161,3 +169,18 @@ def test_4_core_scenarios():
     2. `app.py`에서는 간단히 `from src.utils.ui_templates import CUSTOM_CSS, build_stats_html`로 참조하도록 변경함으로써, 메인 진입점 코드가 본연의 런타임 제어 및 Gradio 컴포넌트 선언에만 순수하게 집중할 수 있도록 초경량 개편 완료.
   - **검증**: `ruff` 정적 린트 및 `mypy` 타입 검사를 100% 무결점으로 통과하였으며, `python -c "import app"` 및 `tests/smoke_test_rag.py` 하이브리드 RAG 테스트도 전원 완벽하게 합격(PASS)함.
 
+- [x] **그래프 관계 연결 누락 근본 해결 및 관계 검증 자동화 (2026-05-20)**:
+  - **현상**: Neo4j 그래프 시각화 시 엔티티 노드 수백 개에 비해 엔티티 간 직접 관계선(DEVELOPS, APPLIES 등)이 4개 수준으로 극소수여서 그래프 기반 분석이 사실상 불가능한 상태 발견.
+  - **원인**:
+    1. `extract_relations` 프롬프트의 JSON 지시문 오타(`'공으로만:{...}'`)로 인해 LLM이 올바른 JSON을 생성하지 못해 관계 파싱 전량 실패.
+    2. LLM이 반환한 source/target 이름이 `extract_entities` 추출 이름과 미세하게 달라 관계 필터에서 전량 제거.
+    3. 관계 추출 후 품질 검증 및 자기반성(Self-Reflection) 루프가 없어 0개 관계를 그대로 적재.
+    4. `gpt-4o-mini`의 복잡한 관계 추론 능력 한계.
+  - **조치**:
+    1. **`gpt-4o` 업그레이드**: 엔티티/관계 추출 전용 모델을 `gpt-4o`로 승격. RAG 검색 및 임베딩은 `gpt-4o-mini` 유지.
+    2. **`extract_relations` 프롬프트 전면 재설계**: 엔티티 이름 목록을 명시 전달하여 LLM이 동일 이름을 사용하도록 강제. JSON 지시문 오타 수정.
+    3. **`ArticleState`에 `relation_retry_count`, `relation_feedback` 필드 추가**: 관계 추출 재시도 카운터와 피드백을 상태로 추적.
+    4. **`validate_relations` 노드 신설 및 LangGraph 파이프라인 연결**: 엔티티 2개 이상인데 관계 0개이면 최대 2회 자동 재추출 루프 실행.
+    5. **적재 로그에 관계 수 및 경고 표시**: 기사당 엔티티 수/관계 수를 명시 출력, 관계 0개인 경우 ⚠️ 경고 노출.
+    6. **`smoke_test_rag.py` 관계 연결성 심층 검증 추가**: 6종 관계 유형별 카운트, 고립 노드 비율, 기사당 평균 관계 수 자동 점검 및 임계값(3.0개) 판정.
+  - **검증**: `ruff`, `mypy` 무결점 통과. 현재 그래프 상태: DEVELOPS 69개/APPLIES 102개/전체 엔티티 관계 401개(기사당 5.6개). 관계 재적재 파이프라인 재실행 예정.

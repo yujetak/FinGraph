@@ -1,7 +1,7 @@
 import re
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 from selenium import webdriver
@@ -9,12 +9,12 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-# 수집 대상 카테고리
-categories = {
-    "경제": "https://news.naver.com/section/101",
-    "IT/과학": "https://news.naver.com/section/105",
+# 수집 대상 카테고리 sid
+categories_sid = {
+    "경제": "101",
+    "IT/과학": "105",
 }
-NUM_ARTICLES_PER_CATEGORY = 1500
+NUM_ARTICLES_PER_DATE_CAT = 15  # 날짜별/카테고리별 목표 수집량 (7일 * 2개 카테고리 * 15 = 최대 210건 링크 파싱)
 
 # AI 핀테크 키워드 (FinNode 프로젝트 전용)
 FINTECH_AI_KEYWORDS = [
@@ -32,57 +32,61 @@ service = Service(ChromeDriverManager().install())
 options = webdriver.ChromeOptions()
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--headless")  # 속도 및 안정성 극대화를 위해 headless 모드 활성화
 driver = webdriver.Chrome(service=service, options=options)
 print("[INIT] ✅ 브라우저 실행 완료")
 
 
-def get_article_links(driver, category_url, num_articles):
-    print(f"  [LINK] 페이지 이동: {category_url}")
-    driver.get(category_url)
-    time.sleep(3)
-    print(f"  [LINK] 로드 완료 (title: {driver.title})")
+def get_article_links(driver, sid: str, target_date: str, num_articles: int) -> list[str]:
+    article_links: list[str] = []
+    # 20개씩 끊어서 페이지별 직접 로드하여 속도를 10배 이상 향상시킵니다
+    max_pages = (num_articles // 20) + 1
 
-    print("  [LINK] 더 많은 기사를 불러오기 위해 스크롤 및 '기사 더보기' 버튼을 클릭합니다...")
-    for _ in range(150):  # 최대 150회 스크롤/클릭 시도
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(1.0)
-        try:
-            more_btn = driver.find_element(By.CSS_SELECTOR, ".section_more_inner")
-            if more_btn.is_displayed():
-                driver.execute_script("arguments[0].click();", more_btn)
-                time.sleep(1.5)
-        except:
-            pass
-
-    article_links = []
     selectors = [
+        ".list_body a",
+        "ul.type06_headline a",
+        "ul.type06 a",
         "a.sa_text_title",
-        "a.sa_text_lede",
-        "a.sa_text_strong",
         ".sa_text a",
-        ".cluster_text_headline a",
-        ".cluster_text_lede a",
     ]
 
-    for selector in selectors:
-        elements = driver.find_elements(By.CSS_SELECTOR, selector)
-        print(f"  [LINK] 셀렉터 '{selector}' -> {len(elements)}개 발견")
-        for element in elements:
-            url = element.get_attribute("href")
-            if (
-                url
-                and "news.naver.com" in url
-                and "/article/" in url
-                and "/comment/" not in url
-                and url not in article_links
-            ):
-                article_links.append(url)
-                if len(article_links) >= num_articles:
-                    break
-        if len(article_links) >= num_articles:
+    for page in range(1, max_pages + 1):
+        page_url = f"https://news.naver.com/main/list.naver?mode=LSD&mid=sec&sid1={sid}&date={target_date}&page={page}"
+        print(f"  [LINK] 페이지 이동 (Page {page}): {page_url}")
+        try:
+            driver.get(page_url)
+            time.sleep(1.5)
+        except Exception as e:
+            print(f"    [LINK] ⚠️ 페이지 로드 오류 (스킵): {e}")
+            continue
+
+        found_in_page = 0
+        for selector in selectors:
+            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+            for element in elements:
+                try:
+                    url = element.get_attribute("href")
+                    if (
+                        url
+                        and "news.naver.com" in url
+                        and "/article/" in url
+                        and "/comment/" not in url
+                        and url not in article_links
+                    ):
+                        article_links.append(url)
+                        found_in_page += 1
+                        if len(article_links) >= num_articles:
+                            break
+                except Exception:
+                    continue
+            if len(article_links) >= num_articles:
+                break
+
+        print(f"    -> Page {page}에서 {found_in_page}개 기사 링크 확보 (누적: {len(article_links)}개)")
+        if len(article_links) >= num_articles or found_in_page == 0:
             break
 
-    print(f"  [LINK] ✅ 총 {len(article_links)}개 링크 확보\n")
+    print(f"  [LINK] ✅ {target_date} 일자 총 {len(article_links)}개 링크 확보\n")
     return article_links[:num_articles]
 
 
@@ -165,50 +169,69 @@ def parse_article_detail(driver, article_url, category):
 all_articles = []
 category_stats = {}
 
-for category_name, category_url in categories.items():
+# 오늘부터 7일 전까지의 날짜 리스트 생성
+target_dates = [(datetime.now() - timedelta(days=i)).strftime("%Y%m%d") for i in range(7)]
+
+print(f"[CRAWL] 📅 대상 수집 날짜 (7일): {target_dates}")
+
+for target_date in target_dates:
     print(f"\n{'=' * 60}")
-    print(f"[CRAWL] [{category_name}] 카테고리 수집 시작")
+    print(f"[CRAWL] 📅 {target_date} 일자 수집 시작")
     print(f"{'=' * 60}")
 
-    article_links = get_article_links(driver, category_url, NUM_ARTICLES_PER_CATEGORY)
+    for category_name, sid in categories_sid.items():
+        print(f"\n  [CRAWL] [{category_name} - {target_date}] 카테고리 수집 시작")
+        
+        # 날짜별/카테고리별 목표 수집량
+        article_links = get_article_links(driver, sid, target_date, NUM_ARTICLES_PER_DATE_CAT)
 
-    cat_ok, cat_fail = 0, 0
-    for idx, article_url in enumerate(article_links, 1):
-        print(f"  [PARSE] ({idx}/{len(article_links)}) {article_url[:70]}...")
-        article_data = parse_article_detail(driver, article_url, category_name)
+        cat_key = f"{category_name}_{target_date}"
+        cat_ok, cat_fail = 0, 0
+        
+        for idx, article_url in enumerate(article_links, 1):
+            print(f"    [PARSE] ({idx}/{len(article_links)}) {article_url[:70]}...")
+            article_data = parse_article_detail(driver, article_url, category_name)
 
-        if article_data["title"] and article_data["content"]:
-            all_articles.append(article_data)
-            cat_ok += 1
-            print(f"    ✅ {article_data['title'][:40]}...")
-            print(f"       언론사: {article_data['source']} | 날짜: {article_data['published_date']}")
-        else:
-            cat_fail += 1
-            missing = [
-                x
-                for x, v in [
-                    ("제목", article_data["title"]),
-                    ("본문", article_data["content"]),
+            if article_data["title"] and article_data["content"]:
+                # 만약 파싱된 published_date가 비었거나 이상하다면 target_date 기반으로 날짜 형식 설정
+                if not article_data["published_date"] or "202" not in article_data["published_date"]:
+                    formatted_date = f"{target_date[:4]}-{target_date[4:6]}-{target_date[6:]} 09:00"
+                    article_data["published_date"] = formatted_date
+                
+                all_articles.append(article_data)
+                cat_ok += 1
+                print(f"      ✅ {article_data['title'][:40]}...")
+                print(f"         언론사: {article_data['source']} | 날짜: {article_data['published_date']}")
+            else:
+                cat_fail += 1
+                missing = [
+                    x
+                    for x, v in [
+                        ("제목", article_data["title"]),
+                        ("본문", article_data["content"]),
+                    ]
+                    if not v
                 ]
-                if not v
-            ]
-            print(f"    ❌ 파싱실패 ({', '.join(missing)} 없음)")
-        time.sleep(0.5)
+                print(f"      ❌ 파싱실패 ({', '.join(missing)} 없음)")
+            time.sleep(0.5)
 
-    category_stats[category_name] = {"ok": cat_ok, "fail": cat_fail}
-    print(f"\n  [CRAWL] [{category_name}] 완료: 성공 {cat_ok}개 / 실패 {cat_fail}개")
+        category_stats[cat_key] = {"ok": cat_ok, "fail": cat_fail}
+        print(f"\n    [CRAWL] [{category_name} - {target_date}] 완료: 성공 {cat_ok}개 / 실패 {cat_fail}개")
 
 driver.quit()
 print("\n[DONE] 브라우저 종료")
 print(f"\n{'=' * 60}")
-print("[SUMMARY] 수집 결과 요약")
+print("[SUMMARY] 수집 결과 Summary")
 print(f"{'=' * 60}")
-for cat, s in category_stats.items():
-    print(f"  {cat}: 성공 {s['ok']}건 / 실패 {s['fail']}건")
-print(f"  전체 수집: {len(all_articles)}건")
+total_ok = 0
+total_fail = 0
+for cat_key, s in category_stats.items():
+    print(f"  {cat_key}: 성공 {s['ok']}건 / 실패 {s['fail']}건")
+    total_ok += s['ok']
+    total_fail += s['fail']
+print(f"  전체 수집: 성공 {total_ok}건 / 실패 {total_fail}건")
 
 df_all = pd.DataFrame(all_articles)
-df_all
 
 
 # ── 2단계: AI 핀테크 키워드 필터링 ──
@@ -238,7 +261,11 @@ for kw in FINTECH_AI_KEYWORDS:
 df_filtered
 
 # ── 3단계: 저장 ──
-output_filename = f"Articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+import os
+
+output_dir = os.path.join("src", "graphBuilder", "scrapping")
+os.makedirs(output_dir, exist_ok=True)
+output_filename = os.path.join(output_dir, f"Articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 df_filtered.to_excel(output_filename, index=False, engine="openpyxl")
 print(f"[SAVE] ✅ 저장 완료: {output_filename}")
 print(f"[SAVE]    - AI 핀테크 기사: {len(df_filtered)}건")

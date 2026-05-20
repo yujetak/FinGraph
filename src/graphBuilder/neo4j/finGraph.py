@@ -85,7 +85,8 @@ def get_neo4j_driver() -> neo4j.Driver:
 
 driver = None
 
-chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+# 엔티티/관계 추출은 gpt-4o를 사용하여 그래프 품질을 최대화한다
+chat_llm = ChatOpenAI(model="gpt-4o", temperature=0)
 rag_llm = OpenAILLM(model_name="gpt-4o-mini", model_params={"temperature": 0})
 embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
@@ -103,8 +104,10 @@ class ArticleState(TypedDict):
     is_ai_related: bool
     entities: List[Dict]
     relations: List[Dict]
-    retry_count: int
-    reflection_feedback: str
+    retry_count: int               # 엔티티 추출 재시도 카운터
+    reflection_feedback: str       # 엔티티 추출 자기반성 피드백
+    relation_retry_count: int      # 관계 추출 재시도 카운터
+    relation_feedback: str         # 관계 추출 자기반성 피드백
 
 
 def check_ai_relevance(state: ArticleState) -> ArticleState:
@@ -196,48 +199,131 @@ JSON으로만 응답: {{"entities":[{{"name":"...","type":"AICompany|AITechnolog
 
 
 def extract_relations(state: ArticleState) -> ArticleState:
-    """Node 3: 관계 추출"""
+    """Node 3: 관계 추출 (자기반성 피드백 반영 및 엔티티명 정합성 검증)"""
     if not state["entities"]:
-        return {**state, "relations": []}
+        return {**state, "relations": [], "relation_retry_count": 0, "relation_feedback": ""}
+
+    relation_retry = state.get("relation_retry_count", 0) + 1
+    rel_feedback = state.get("relation_feedback", "")
+
+    # 엔티티명 목록을 정확히 제공하여 LLM이 이름을 임의로 변경하지 않도록 한다
+    names_list = [e["name"] for e in state["entities"]]
     elist = "\n".join([f"- {e['name']} ({e['type']})" for e in state["entities"]])
+
+    feedback_prompt = ""
+    if rel_feedback:
+        feedback_prompt = (
+            f"\n\n⚠️ [이전 시도 관계 추출 오류 피드백]:\n{rel_feedback}\n"
+            "위 오류를 반드시 수정하여, source/target 이름이 엔티티 목록에 있는 이름과 정확히 일치하는 "
+            "관계만 JSON으로 응답하세요."
+        )
+
     prompt = (
-        f"엔티티 목록:\n{elist}\n\n"
-        "관계 유형: DEVELOPS, INVESTS_IN, PARTNERS_WITH, APPLIES, USED_IN, RELATED_TO\n"
-        f"본문: {state['text'][:700]}\n\n"
-        '공으로만:{"relations":[{"source":"...","relation":"...","target":"..."}]}'
+        f"다음 AI 뉴스에서 엔티티 간의 관계를 추출하세요.\n\n"
+        f"엔티티 목록 (이름은 정확히 이 목록에서만 사용):\n{elist}\n\n"
+        f"본문: {state['text'][:900]}\n\n"
+        "관계 유형:\n"
+        "- DEVELOPS: 기업이 기술/서비스를 개발\n"
+        "- INVESTS_IN: 기업이 다른 기업/분야에 투자\n"
+        "- PARTNERS_WITH: 기업 간 파트너십/협력\n"
+        "- APPLIES: 기업이 기술을 특정 분야에 적용\n"
+        "- USED_IN: 기술/서비스가 특정 분야/제품에 활용\n"
+        "- RELATED_TO: 일반적 연관 관계\n\n"
+        "규칙: source와 target은 반드시 위 엔티티 목록의 정확한 이름을 사용할 것. "
+        "엔티티가 최소 2개 이상이면 반드시 1개 이상의 관계를 추출할 것.\n\n"
+        f"{feedback_prompt}"
+        'JSON으로만 응답: {"relations":[{"source":"엔티티명","relation":"관계유형","target":"엔티티명"}]}'
     )
+
     res = chat_llm.invoke(prompt)
+    relations: List[Dict] = []
+    new_rel_feedback = ""
+
     try:
         raw = str(res.content).strip()
         if "```" in raw:
-            raw = raw.split("```")[1].lstrip("json")
-        relations = json.loads(raw).get("relations", [])
-        names = {e["name"] for e in state["entities"]}
-        relations = [r for r in relations if r.get("source") in names and r.get("target") in names]
-    except Exception:
+            raw = raw.split("```")[1].lstrip("json").strip()
+        parsed = json.loads(raw).get("relations", [])
+
+        # 엔티티 이름 집합으로 관계 소스/타겟 정합성 검증
+        names_set = set(names_list)
+        allowed = {"DEVELOPS", "INVESTS_IN", "PARTNERS_WITH", "APPLIES", "USED_IN", "RELATED_TO"}
+        valid_rels: List[Dict] = []
+        for r in parsed:
+            src = r.get("source", "").strip()
+            tgt = r.get("target", "").strip()
+            rel = r.get("relation", "").strip().upper()
+            if src not in names_set:
+                new_rel_feedback += f"- source '{src}'이 엔티티 목록에 없음\n"
+                continue
+            if tgt not in names_set:
+                new_rel_feedback += f"- target '{tgt}'이 엔티티 목록에 없음\n"
+                continue
+            if rel not in allowed:
+                new_rel_feedback += f"- 관계유형 '{rel}'은 허용되지 않음\n"
+                continue
+            if src == tgt:
+                new_rel_feedback += f"- source와 target이 동일({src})하여 제외\n"
+                continue
+            valid_rels.append({"source": src, "relation": rel, "target": tgt})
+
+        relations = valid_rels
+        # 엔티티가 2개 이상인데 관계가 0개이면 피드백
+        if len(names_list) >= 2 and not relations:
+            new_rel_feedback = (
+                f"엔티티가 {len(names_list)}개임에도 유효 관계가 0개입니다. "
+                "본문에서 반드시 연관되는 엔티티 쌍을 찾아 관계를 추출하세요."
+            )
+    except Exception as err:
         relations = []
-    return {**state, "relations": relations}
+        new_rel_feedback = f"JSON 파싱 실패: {str(err)}"
+
+    return {
+        **state,
+        "relations": relations,
+        "relation_retry_count": relation_retry,
+        "relation_feedback": new_rel_feedback.strip(),
+    }
 
 
 def route_after_check(state: ArticleState) -> str:
+    """AI 관련 기사인지 판별 후 라우팅"""
     return "extract_entities" if state["is_ai_related"] else END
 
 
 def validate_entities(state: ArticleState) -> str:
-    """추출된 엔티티의 품질을 검증하고, 미달할 경우 최대 3회까지 자기반성(Self-Reflection) 루프를 동작시킵니다."""
+    """엔티티 품질 검증 — 미달 시 최대 3회 자기반성(Self-Reflection) 루프"""
     retry_count = state.get("retry_count", 0)
     feedback = state.get("reflection_feedback", "")
     entities = state.get("entities", [])
-    
-    # 추출에 문제점이 있고 아직 최대 3회 재시도를 초과하지 않은 경우
+
     if (feedback or not entities) and retry_count < 3:
-        print(f"    ⚠️ [Self-Reflection] 엔티티 품질 미달 (시도 {retry_count}/3). 피드백: {feedback[:100]}...")
-        return "extract_entities"  # 자기반성 루프로 복귀
-        
+        print(f"    ⚠️ [엔티티 Self-Reflection] 품질 미달 ({retry_count}/3). 피드백: {feedback[:80]}")
+        return "extract_entities"
+
     if feedback and retry_count >= 3:
-        print(f"    🚨 [Self-Reflection] 엔티티 3회 시도 초과. 검증 오류가 있지만 패스합니다. 피드백: {feedback[:100]}...")
-        
-    return "extract_relations"  # 검증을 정상 통과했거나 최대 3회 한도에 도달한 경우 통과
+        print(f"    🚨 [엔티티 Self-Reflection] 3회 초과, 강제 통과. 피드백: {feedback[:80]}")
+
+    return "extract_relations"
+
+
+def validate_relations(state: ArticleState) -> str:
+    """관계 품질 검증 — 엔티티 2개 이상인데 관계 0개이면 최대 2회 재시도"""
+    rel_retry = state.get("relation_retry_count", 0)
+    rel_feedback = state.get("relation_feedback", "")
+    relations = state.get("relations", [])
+    entities = state.get("entities", [])
+
+    # 엔티티가 2개 이상인데 관계가 없고 아직 재시도 여유가 있으면 루프
+    if len(entities) >= 2 and not relations and rel_retry < 2:
+        print(f"    ⚠️ [관계 Self-Reflection] 관계 0개 ({rel_retry}/2). 재시도: {rel_feedback[:80]}")
+        return "extract_relations"
+
+    if rel_feedback and relations:
+        # 유효 관계가 있지만 일부 피드백도 있음 — 통과
+        print(f"    ⚠️ [관계 Self-Reflection] 일부 무효 관계 제외됨. 유효 관계: {len(relations)}개")
+
+    return END
 
 
 builder = StateGraph(ArticleState)
@@ -247,17 +333,26 @@ builder.add_node("extract_relations", extract_relations)
 builder.set_entry_point("check_ai")
 builder.add_conditional_edges("check_ai", route_after_check)
 
-# 자기반성 조건부 엣지 매핑
+# 엔티티 자기반성 루프
 builder.add_conditional_edges(
     "extract_entities",
     validate_entities,
     {
         "extract_entities": "extract_entities",
-        "extract_relations": "extract_relations"
-    }
+        "extract_relations": "extract_relations",
+    },
 )
 
-builder.add_edge("extract_relations", END)
+# 관계 자기반성 루프 (신규)
+builder.add_conditional_edges(
+    "extract_relations",
+    validate_relations,
+    {
+        "extract_relations": "extract_relations",
+        END: END,
+    },
+)
+
 pipeline = builder.compile()
 
 
@@ -377,8 +472,8 @@ def main() -> None:
     global driver
     driver = get_neo4j_driver()
     
-    # 1. 모든 엑셀 파일 로드 후 병합 및 고유 기사만 필터링
-    xlsx_files = sorted(glob.glob("Articles_*.xlsx"))
+    # 1. 모든 엑셀 파일 로드 후 병합 및 고유 기사만 필터링 (루트 및 scrapping 폴더 모두 탐색)
+    xlsx_files = sorted(glob.glob("Articles_*.xlsx") + glob.glob(os.path.join("src", "graphBuilder", "scrapping", "Articles_*.xlsx")))
     if not xlsx_files:
         raise FileNotFoundError("Articles_*.xlsx 파일이 없습니다. finScrapping.py를 먼저 실행하세요.")
     
@@ -421,6 +516,8 @@ def main() -> None:
             relations=[],
             retry_count=0,
             reflection_feedback="",
+            relation_retry_count=0,
+            relation_feedback="",
         )
         out = pipeline.invoke(state)
         if out["is_ai_related"]:
@@ -430,7 +527,14 @@ def main() -> None:
                 for r in out["relations"]:
                     s.execute_write(upsert_relation, r)
                 s.execute_write(upsert_article_and_mentions, row, out["entities"])
-            print(f"  ✅ [{idx + 1}/{len(df)}] 신규 적재완료: {title[:35]}... | 엔티티: {[ent['name'] for ent in out['entities'][:4]]}")
+            rel_cnt = len(out["relations"])
+            ent_cnt = len(out["entities"])
+            # 엔티티가 2개 이상인데 관계가 없으면 경고 표시
+            rel_warn = " ⚠️ 관계=0" if ent_cnt >= 2 and rel_cnt == 0 else ""
+            print(
+                f"  ✅ [{idx + 1}/{len(df)}] 신규 적재완료: {title[:35]}... "
+                f"| 엔티티: {ent_cnt}개 | 관계: {rel_cnt}개{rel_warn}"
+            )
         else:
             print(f"  ⏭️  [{idx + 1}/{len(df)}] AI 비관련 (적재 제외): {title[:35]}...")
     

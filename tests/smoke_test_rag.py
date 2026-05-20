@@ -51,6 +51,7 @@ def check_graph_structure():
     print("📊 [사전 점검] Neo4j 그래프 구성 현황")
     print("=" * 60)
 
+    # ── 노드/기본 관계 수 점검 ──────────────────────────────────────────────
     queries = {
         "Article (기사)":        "MATCH (n:Article) RETURN count(n) as cnt",
         "AICompany (기업)":      "MATCH (n:AICompany) RETURN count(n) as cnt",
@@ -72,13 +73,56 @@ def check_graph_structure():
                 all_ok = False
             print(f"  {status}  {label}: {cnt}개")
 
+    # ── 엔티티 간 직접 관계 연결성 심층 점검 ───────────────────────────────
+    print()
+    print("  [엔티티 간 직접 관계 연결성 점검]")
+    entity_rel_types = ["DEVELOPS", "INVESTS_IN", "PARTNERS_WITH", "APPLIES", "USED_IN", "RELATED_TO"]
+    total_entity_rels = 0
+    with driver.session() as s:
+        for rel_type in entity_rel_types:
+            cnt = s.run(
+                f"MATCH ()-[r:{rel_type}]->() RETURN count(r) as cnt"
+            ).single()["cnt"]
+            total_entity_rels += cnt
+            status = "✅" if cnt > 0 else "⚠️"
+            print(f"    {status} {rel_type}: {cnt}개")
+
+        # 고립 노드(관계가 전혀 없는 Content 제외) 비율 점검
+        isolated = s.run(
+            "MATCH (n) WHERE NOT (n)--() AND NOT n:Content RETURN count(n) as cnt"
+        ).single()["cnt"]
+        total_nodes = s.run(
+            "MATCH (n) WHERE NOT n:Content RETURN count(n) as cnt"
+        ).single()["cnt"]
+
+    isolation_rate = (isolated / total_nodes * 100) if total_nodes > 0 else 0
+    iso_status = "✅" if isolation_rate < 20 else "⚠️ 고립 노드 과다"
+    print(f"\n    {iso_status} 고립 노드(Content 제외): {isolated}개 / 전체: {total_nodes}개 ({isolation_rate:.1f}%)")
+    print(f"    엔티티 간 직접 관계 합계: {total_entity_rels}개")
+
+    # 엔티티 간 관계가 전혀 없으면 실패 처리
+    if total_entity_rels == 0:
+        print("\n  ⛔ 엔티티 간 직접 관계(DEVELOPS/APPLIES 등)가 0개입니다. finGraph.py 재실행 필요.")
+        all_ok = False
+
+    # 최소 임계값: 기사 10건당 직접 관계 5개 이상 권고
+    with driver.session() as s:
+        article_cnt = s.run("MATCH (n:Article) RETURN count(n) as cnt").single()["cnt"]
+    if article_cnt > 0:
+        rels_per_article = total_entity_rels / article_cnt
+        threshold_ok = rels_per_article >= 3.0
+        t_status = "✅" if threshold_ok else "⚠️ 관계 밀도 부족"
+        print(f"    {t_status} 기사당 평균 엔티티 관계: {rels_per_article:.1f}개 (권고: 3.0개 이상)")
+        if not threshold_ok:
+            all_ok = False
+
     driver.close()
     print()
     if not all_ok:
-        print("⛔ 일부 노드/관계가 비어있습니다. finGraph.py 실행으로 그래프를 먼저 채워주세요.\n")
+        print("⛔ 일부 노드/관계가 비어있거나 연결성이 부족합니다. finGraph.py 실행으로 그래프를 채워주세요.\n")
         sys.exit(1)
     else:
-        print("✅ 그래프 구성 정상 — RAG 테스트를 시작합니다.\n")
+        print("✅ 그래프 구성 및 연결성 정상 — RAG 테스트를 시작합니다.\n")
 
 
 # ── 1. GraphRAG 응답 품질 검증 ───────────────────────────────────────────────

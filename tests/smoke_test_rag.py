@@ -188,39 +188,39 @@ if __name__ == "__main__":
 
     results = []
 
-    # 시나리오 1: 삼성전자 가우스 2 AI 트렌드
+    # 시나리오 1: 신한은행 AI 쏠 포트폴리오
     results.append(run_scenario(
-        label="① 삼성전자 — 삼성전자의 자체 AI 모델인 '삼성 가우스 2'의 특징과 주요 적용 계획을 알려줘",
-        query="삼성전자의 자체 AI 모델인 '삼성 가우스 2'의 특징과 주요 적용 계획을 알려줘",
-        expected_keywords=["삼성", "가우스"],
+        label="① 신한은행 — 신한은행의 '신한 AI 쏠 포트폴리오' 로보어드바이저 기술과 개인 맞춤형 서비스의 특징을 설명해줘",
+        query="신한은행의 '신한 AI 쏠 포트폴리오' 로보어드바이저 기술과 개인 맞춤형 서비스의 특징을 설명해줘",
+        expected_keywords=["신한", "로보어드바이저"],
     ))
 
-    # 시나리오 2: 카카오 카나나 AI 브랜드
+    # 시나리오 2: 카카오페이 AI 대안신용평가
     results.append(run_scenario(
-        label="② 카카오 — 카카오가 공개한 AI 브랜드 '카나나(Kanana)'와 카나나 워크 등 서비스 라인업을 설명해줘",
-        query="카카오가 공개한 AI 브랜드 '카나나(Kanana)'와 카나나 워크 등 서비스 라인업을 설명해줘",
-        expected_keywords=["카카오", "카나나"],
+        label="② 카카오페이 — 카카오페이가 씬파일러를 위해 개발한 'AI 대안신용평가' 모델의 장점과 대출 승인 효과는 무엇인가요?",
+        query="카카오페이가 씬파일러를 위해 개발한 'AI 대안신용평가' 모델의 장점과 대출 승인 효과는 무엇인가요?",
+        expected_keywords=["카카오페이", "대안신용평가"],
     ))
 
-    # 시나리오 3: AWS 피지컬 AI 및 에이전틱 AI
+    # 시나리오 3: 토스뱅크 AI FDS
     results.append(run_scenario(
-        label="③ AWS — AWS가 강조하는 '피지컬 AI'와 '에이전틱 AI' 기술의 한국 시장 지원 및 협력 방안은 무엇인가요?",
-        query="AWS가 강조하는 '피지컬 AI'와 '에이전틱 AI' 기술의 한국 시장 지원 및 협력 방안은 무엇인가요?",
-        expected_keywords=["AWS", "피지컬", "에이전틱"],
+        label="③ 토스뱅크 — 토스뱅크의 실시간 보이스피싱 탐지 기술인 '토스 AI FDS'의 작동 원리와 차단율을 알려줘",
+        query="토스뱅크의 실시간 보이스피싱 탐지 기술인 '토스 AI FDS'의 작동 원리와 차단율을 알려줘",
+        expected_keywords=["토스", "FDS"],
     ))
 
-    # 시나리오 4: 구글 I/O 제미나이 기술 변화
+    # 시나리오 4: 네이버페이 AI 금융 비서
     results.append(run_scenario(
-        label="④ 구글 — 구글이 I/O 행사에서 발표한 AI 기반 검색 변화와 '제미나이(Gemini)' 기술의 적용 사례를 알려줘",
-        query="구글이 I/O 행사에서 발표한 AI 기반 검색 변화와 '제미나이(Gemini)' 기술의 적용 사례를 알려줘",
-        expected_keywords=["구글", "제미나이"],
+        label="④ 네이버페이 — 네이버페이가 출시한 'AI 금융 비서'가 마이데이터와 결합하여 제공하는 맞춤 자산 가이드는 어떤 것인가요?",
+        query="네이버페이가 출시한 'AI 금융 비서'가 마이데이터와 결합하여 제공하는 맞춤 자산 가이드는 어떤 것인가요?",
+        expected_keywords=["네이버페이", "마이데이터"],
     ))
 
     # 최종 요약
     print("=" * 60)
     print("📋 최종 요약")
     print("=" * 60)
-    labels = ["① 삼성 가우스 2", "② 카카오 카나나", "③ AWS 피지컬 AI", "④ 구글 제미나이"]
+    labels = ["① 신한 AI 쏠 포트폴리오", "② 카카오페이 AI 신용평가", "③ 토스 AI FDS", "④ 네이버페이 AI 금융 비서"]
     for label, passed in zip(labels, results):
         print(f"  {'✅ PASS' if passed else '⚠️  PARTIAL'} | {label}")
     print()

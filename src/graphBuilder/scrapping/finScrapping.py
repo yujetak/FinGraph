@@ -1,7 +1,12 @@
 import re
+import sys
 import time
 from collections import Counter
 from datetime import datetime, timedelta
+
+# 윈도우 콘솔 UnicodeEncodeError 완전 방지
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 import pandas as pd
 from selenium import webdriver
@@ -9,23 +14,28 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-# 수집 대상 카테고리 sid
+# 수집 대상 카테고리 sid - 사용자의 듀얼 하이브리드 필터 지침에 맞추어 경제와 IT/과학을 모두 수집합니다.
 categories_sid = {
     "경제": "101",
     "IT/과학": "105",
 }
-NUM_ARTICLES_PER_DATE_CAT = 15  # 날짜별/카테고리별 목표 수집량 (7일 * 2개 카테고리 * 15 = 최대 210건 링크 파싱)
+NUM_ARTICLES_PER_DATE_CAT = 20  # 카테고리별/날짜별 수집량 (7일 * 2개 카테고리 * 20 = 최대 280건 링크 파싱)
 
-# AI 핀테크 키워드 (FinNode 프로젝트 전용)
-FINTECH_AI_KEYWORDS = [
-    # AI 기술
-    "AI",
-    "인공지능",
-    "생성형 AI",
-    "대규모언어모델",
-    # AI 핀테크 (금융)
-    "핀테크",
+# AI 및 금융/핀테크 키워드 리스트 (교차 하이브리드 필터링 적용)
+AI_KEYWORDS = [
+    "AI", "인공지능", "생성형 AI", "대규모언어모델", "LLM", "GPT", 
+    "제미나이", "Gemini", "클로드", "Claude", "머신러닝", "딥러닝"
 ]
+
+FIN_KEYWORDS = [
+    "핀테크", "금융", "은행", "카드", "증권", "페이", "송금", "결제", 
+    "자산관리", "신용평가", "신용", "투자", "마이데이터", "로보어드바이저", 
+    "인터넷은행", "인슈어테크", "자산운용", "카카오뱅크", "토스뱅크", 
+    "케이뱅크", "네이버페이", "카카오페이", "토스", "주식", "뱅킹", 
+    "디지털 금융", "ST", "토큰증권", "FDS", "금융 사기", "이상거래"
+]
+
+FINTECH_AI_KEYWORDS = AI_KEYWORDS + FIN_KEYWORDS  # 시각화 호환용 전체 목록
 
 print("[INIT] ChromeDriver 초기화 중...")
 service = Service(ChromeDriverManager().install())
@@ -34,7 +44,7 @@ options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--headless")  # 속도 및 안정성 극대화를 위해 headless 모드 활성화
 driver = webdriver.Chrome(service=service, options=options)
-print("[INIT] ✅ 브라우저 실행 완료")
+print("[INIT] [OK] 브라우저 실행 완료")
 
 
 def get_article_links(driver, sid: str, target_date: str, num_articles: int) -> list[str]:
@@ -161,7 +171,7 @@ def parse_article_detail(driver, article_url, category):
         except:
             pass
     except Exception as e:
-        print(f"    [PARSE] ⚠️  파싱 오류: {e}")
+        print(f"    [PARSE] [WARN] 파싱 오류: {e}")
     return article_data
 
 
@@ -172,11 +182,11 @@ category_stats = {}
 # 오늘부터 7일 전까지의 날짜 리스트 생성
 target_dates = [(datetime.now() - timedelta(days=i)).strftime("%Y%m%d") for i in range(7)]
 
-print(f"[CRAWL] 📅 대상 수집 날짜 (7일): {target_dates}")
+print(f"[CRAWL] [DATE] 대상 수집 날짜 (7일): {target_dates}")
 
 for target_date in target_dates:
     print(f"\n{'=' * 60}")
-    print(f"[CRAWL] 📅 {target_date} 일자 수집 시작")
+    print(f"[CRAWL] [DATE] {target_date} 일자 수집 시작")
     print(f"{'=' * 60}")
 
     for category_name, sid in categories_sid.items():
@@ -200,7 +210,7 @@ for target_date in target_dates:
                 
                 all_articles.append(article_data)
                 cat_ok += 1
-                print(f"      ✅ {article_data['title'][:40]}...")
+                print(f"      [OK] {article_data['title'][:40]}...")
                 print(f"         언론사: {article_data['source']} | 날짜: {article_data['published_date']}")
             else:
                 cat_fail += 1
@@ -212,7 +222,7 @@ for target_date in target_dates:
                     ]
                     if not v
                 ]
-                print(f"      ❌ 파싱실패 ({', '.join(missing)} 없음)")
+                print(f"      [FAIL] 파싱실패 ({', '.join(missing)} 없음)")
             time.sleep(0.5)
 
         category_stats[cat_key] = {"ok": cat_ok, "fail": cat_fail}
@@ -234,29 +244,56 @@ print(f"  전체 수집: 성공 {total_ok}건 / 실패 {total_fail}건")
 df_all = pd.DataFrame(all_articles)
 
 
-# ── 2단계: AI 핀테크 키워드 필터링 ──
+# ── 2단계: 금융 AI 듀얼 하이브리드 필터링 (경제 -> AI / IT -> 금융) ──
 print(f"\n{'=' * 60}")
-print("[FILTER] AI 핀테크 키워드 필터링 시작")
+print("[FILTER] 금융 AI 듀얼 하이브리드 필터링 시작")
+print("[FILTER] - 경제 섹션 기사: AI 키워드 존재 시 통과")
+print("[FILTER] - IT/과학 섹션 기사: 금융 키워드 존재 시 통과")
 print(f"{'=' * 60}")
 
 filtered_articles = []
 for _, row in df_all.iterrows():
     text = f"{row['title']} {row['content']}"
-    matched = [kw for kw in FINTECH_AI_KEYWORDS if kw.replace(" ", "") in text.replace(" ", "")]
-    if matched:
+    text_clean = text.lower().replace(" ", "")
+    
+    # 1. AI 도메인 매칭
+    matched_ai = [kw for kw in AI_KEYWORDS if kw.lower().replace(" ", "") in text_clean]
+    # 2. 금융/핀테크 도메인 매칭
+    matched_fin = [kw for kw in FIN_KEYWORDS if kw.lower().replace(" ", "") in text_clean]
+    
+    is_passed = False
+    matched_info = []
+    
+    if row['category'] == "경제":
+        if matched_ai:
+            is_passed = True
+            matched_info = matched_ai
+    elif row['category'] == "IT/과학":
+        if matched_fin:
+            is_passed = True
+            matched_info = matched_fin
+            
+    if is_passed:
         row_dict = row.to_dict()
-        row_dict["matched_keywords"] = ", ".join(matched)
+        # 시각화 및 로깅을 위해 결합된 매칭 키워드 정보 기록
+        row_dict["matched_keywords"] = ", ".join(matched_info)
         filtered_articles.append(row_dict)
 
 df_filtered = pd.DataFrame(filtered_articles)
 
 print(f"  전체 수집: {len(df_all)}건")
-print(f"  AI 핀테크 관련: {len(df_filtered)}건 ({len(df_filtered) / max(len(df_all), 1) * 100:.1f}%)")
-print("\n  [키워드별 매칭 현황]")
+print(f"  AI 핀테크 교차 필터링 통과: {len(df_filtered)}건 ({len(df_filtered) / max(len(df_all), 1) * 100:.1f}%)")
+print("\n  [도메인별 매칭 요약]")
 all_kw = [kw for row in filtered_articles for kw in row["matched_keywords"].split(", ")]
 kw_counts = Counter(all_kw)
-for kw in FINTECH_AI_KEYWORDS:
-    print(f"    {kw}: {kw_counts.get(kw, 0)}건")
+print("    --- AI 기술 키워드 매칭 ---")
+for kw in AI_KEYWORDS:
+    if kw_counts.get(kw, 0) > 0:
+        print(f"      {kw}: {kw_counts.get(kw, 0)}건")
+print("    --- 금융/핀테크 키워드 매칭 ---")
+for kw in FIN_KEYWORDS:
+    if kw_counts.get(kw, 0) > 0:
+        print(f"      {kw}: {kw_counts.get(kw, 0)}건")
 
 df_filtered
 
@@ -267,7 +304,7 @@ output_dir = os.path.join("src", "graphBuilder", "scrapping")
 os.makedirs(output_dir, exist_ok=True)
 output_filename = os.path.join(output_dir, f"Articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 df_filtered.to_excel(output_filename, index=False, engine="openpyxl")
-print(f"[SAVE] ✅ 저장 완료: {output_filename}")
+print(f"[SAVE] [OK] 저장 완료: {output_filename}")
 print(f"[SAVE]    - AI 핀테크 기사: {len(df_filtered)}건")
 
 
@@ -278,9 +315,13 @@ try:
 
     import matplotlib.pyplot as plt
 
-    # 폰트 깨짐 방지 (Mac 환경: AppleGothic)
-    if platform.system() == "Darwin":
+    # 폰트 깨짐 방지 (Windows: Malgun Gothic, Mac: AppleGothic, Linux: NanumGothic)
+    if platform.system() == "Windows":
+        plt.rc("font", family="Malgun Gothic")
+    elif platform.system() == "Darwin":
         plt.rc("font", family="AppleGothic")
+    else:
+        plt.rc("font", family="NanumGothic")
     plt.rcParams["axes.unicode_minus"] = False
 
     if not filtered_articles:

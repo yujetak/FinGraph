@@ -121,20 +121,20 @@ def _get_schema(driver: neo4j.Driver) -> str:
 
 
 _examples = [
-    """USER INPUT: 카카오의 AI 서비스 목록을 알려주세요
+    """USER INPUT: 카카오페이의 AI 서비스 목록을 알려주세요
 CYPHER QUERY:
-    MATCH (c:AICompany {name:"카카오"})-[:DEVELOPS]->(s:AIService)
+    MATCH (c:AICompany {name:"카카오페이"})-[:DEVELOPS]->(s:AIService)
     OPTIONAL MATCH (a:Article)-[:MENTIONS]->(s)
     RETURN s.name AS name, s.description AS description, a.title AS article_title, a.url AS article_url""",
-    """USER INPUT: 삼성전자가 개발 중인 AI 기술은?
+    """USER INPUT: 신한은행이 개발 중인 AI 기술은?
 CYPHER QUERY:
-    MATCH (c:AICompany {name:"삼성전자"})-[:DEVELOPS]->(t:AITechnology)
+    MATCH (c:AICompany {name:"신한은행"})-[:DEVELOPS]->(t:AITechnology)
     OPTIONAL MATCH (a:Article)-[:MENTIONS]->(t)
     RETURN t.name AS name, t.description AS description, a.title AS article_title, a.url AS article_url""",
-    """USER INPUT: 어떤 기업이 LLM 기술을 개발하나요?
+    """USER INPUT: 어떤 금융사가 로보어드바이저 기술을 개발하나요?
 CYPHER QUERY:
     MATCH (c:AICompany)-[:DEVELOPS]->(t:AITechnology)
-    WHERE t.name CONTAINS "언어모델" OR t.name CONTAINS "LLM"
+    WHERE t.name CONTAINS "로보어드바이저" OR t.name CONTAINS "알고리즘"
     OPTIONAL MATCH (a:Article)-[:MENTIONS]->(t)
     RETURN c.name AS company_name, t.name AS tech_name, a.title AS article_title, a.url AS article_url""",
     """USER INPUT: 금융이나 핀테크 분야에 기술을 적용하고 있는 기업들은 어디야?
@@ -150,13 +150,13 @@ CYPHER QUERY:
     OPTIONAL MATCH (a:Article)-[:MENTIONS]->(s)
     RETURN DISTINCT c.name AS company_name, s.name AS service_name, f.name AS field_name, a.title AS article_title, a.url AS article_url
     LIMIT 3""",
-    """USER INPUT: 최근 AI 관련 뉴스 기사를 요약해줘
+    """USER INPUT: 최근 금융 AI 관련 뉴스 기사를 요약해줘
 CYPHER QUERY:
     MATCH (a:Article)-[:HAS_CHUNK]->(c:Content)
     RETURN a.title AS title, a.url AS url, a.published_date AS published_date, c.chunk AS chunk
     ORDER BY a.published_date DESC
     LIMIT 3""",
-    """USER INPUT: 최근 가장 관심이 높은 AI 기술이 뭐야?
+    """USER INPUT: 최근 가장 관심이 높은 금융 AI 기술이 뭐야?
 CYPHER QUERY:
     MATCH (a:Article)-[:MENTIONS]->(t:AITechnology)
     OPTIONAL MATCH (c:AICompany)-[:DEVELOPS]->(t)
@@ -164,7 +164,7 @@ CYPHER QUERY:
     ORDER BY article_count DESC
     RETURN t.name AS tech_name, t.description AS description, article_count, companies, article_titles, article_urls
     LIMIT 5""",
-    """USER INPUT: AI 기술 트렌드를 분석해줘
+    """USER INPUT: 금융 AI 기술 트렌드를 분석해줘
 CYPHER QUERY:
     MATCH (a:Article)-[:MENTIONS]->(t:AITechnology)
     OPTIONAL MATCH (c:AICompany)-[:DEVELOPS]->(t)
@@ -172,10 +172,10 @@ CYPHER QUERY:
     ORDER BY article_count DESC
     RETURN t.name AS tech_name, article_count, companies, article_titles, article_urls
     LIMIT 5""",
-    """USER INPUT: 현대차 또는 로봇 관련 AI 뉴스 알려줘
+    """USER INPUT: 토스 또는 카카오페이 관련 금융 AI 뉴스 알려줘
 CYPHER QUERY:
     MATCH (a:Article)-[:MENTIONS]->(c:AICompany)
-    WHERE c.name CONTAINS '현대' OR c.name CONTAINS '로봇'
+    WHERE c.name CONTAINS '토스' OR c.name CONTAINS '카카오페이'
     OPTIONAL MATCH (a)-[:MENTIONS]->(t:AITechnology)
     OPTIONAL MATCH (a)-[:MENTIONS]->(s:AIService)
     RETURN a.title AS article_title, a.url AS article_url, a.published_date AS article_date,

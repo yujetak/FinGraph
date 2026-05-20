@@ -50,7 +50,7 @@ def get_neo4j_driver() -> neo4j.Driver:
 driver = None
 
 chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
+rag_llm = OpenAILLM(model_name="gpt-4o-mini", model_params={"temperature": 0})
 embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
 INDEX_NAME = "content_vector_index"
@@ -67,6 +67,8 @@ class ArticleState(TypedDict):
     is_ai_related: bool
     entities: List[Dict]
     relations: List[Dict]
+    retry_count: int
+    reflection_feedback: str
 
 
 def check_ai_relevance(state: ArticleState) -> ArticleState:
@@ -83,8 +85,19 @@ def check_ai_relevance(state: ArticleState) -> ArticleState:
 
 
 def extract_entities(state: ArticleState) -> ArticleState:
-    """Node 2: 엔티티 추출"""
-    prompt = f"""다음 AI 뉴스에서 엔티티를 추출하세요.
+    """Node 2: 엔티티 추출 (자기반성 피드백 반영 및 타입 정합성 검증)"""
+    retry_count = state.get("retry_count", 0) + 1
+    feedback = state.get("reflection_feedback", "")
+    
+    feedback_prompt = ""
+    if feedback:
+        feedback_prompt = (
+            f"\n\n⚠️ [이전 시도에 대한 검증 오류 피드백]:\n{feedback}\n"
+            "위 오류를 반드시 분석하여, 이번에는 중복되거나 비어있거나 불완전하지 않고 "
+            "정확한 타입과 설명을 갖춘 올바른 엔티티만 엄격하게 JSON으로 추출해주세요."
+        )
+
+    prompt = f"""다음 AI 뉴스에서 핵심 엔티티들을 추출하세요.
 엔티티 유형:
 - AICompany: 기업/기관 (예: 삼성전자, OpenAI)
 - AITechnology: AI 기술 (예: 대규모언어모델, 강화학습)
@@ -92,18 +105,58 @@ def extract_entities(state: ArticleState) -> ArticleState:
 - AIField: 적용 분야 (예: 금융AI, AI 반도체)
 
 제목: {state["title"]}
-본문: {state["text"][:900]}
+본문: {state["text"][:900]}{feedback_prompt}
 
-JSON으로만 응답:{{"entities":[{{"name":"...","type":"AICompany|AITechnology|AIService|AIField","description":"..."}}]}}"""
+JSON으로만 응답: {{"entities":[{{"name":"...","type":"AICompany|AITechnology|AIService|AIField","description":"..."}}]}}"""
+    
     res = chat_llm.invoke(prompt)
+    entities = []
+    new_feedback = ""
+    
     try:
         raw = str(res.content).strip()
         if "```" in raw:
             raw = raw.split("```")[1].lstrip("json")
-        entities = json.loads(raw).get("entities", [])
-    except Exception:
+        data = json.loads(raw)
+        extracted = data.get("entities", [])
+        
+        allowed_types = {"AICompany", "AITechnology", "AIService", "AIField"}
+        valid_entities = []
+        for e in extracted:
+            name = e.get("name", "").strip()
+            etype = e.get("type", "").strip()
+            desc = e.get("description", "").strip()
+            
+            if not name:
+                new_feedback += "- 엔티티의 이름(name) 필드가 누락되었거나 비어있습니다.\n"
+                continue
+            if etype not in allowed_types:
+                new_feedback += f"- 엔티티 '{name}'의 타입 '{etype}'은 허용된 종류({', '.join(allowed_types)})가 아닙니다.\n"
+                continue
+            if not desc:
+                new_feedback += f"- 엔티티 '{name}'에 대한 설명(description)이 생략되었습니다.\n"
+                continue
+                
+            valid_entities.append({
+                "name": name,
+                "type": etype,
+                "description": desc
+            })
+            
+        entities = valid_entities
+        if not entities:
+            new_feedback = "유효한 엔티티가 하나도 추출되지 않았습니다."
+            
+    except Exception as err:
         entities = []
-    return {**state, "entities": entities}
+        new_feedback = f"응답 JSON 파싱 실패 또는 형식이 올바르지 않습니다. 에러: {str(err)}"
+        
+    return {
+        **state,
+        "entities": entities,
+        "retry_count": retry_count,
+        "reflection_feedback": new_feedback.strip()
+    }
 
 
 def extract_relations(state: ArticleState) -> ArticleState:
@@ -134,13 +187,40 @@ def route_after_check(state: ArticleState) -> str:
     return "extract_entities" if state["is_ai_related"] else END
 
 
+def validate_entities(state: ArticleState) -> str:
+    """추출된 엔티티의 품질을 검증하고, 미달할 경우 최대 3회까지 자기반성(Self-Reflection) 루프를 동작시킵니다."""
+    retry_count = state.get("retry_count", 0)
+    feedback = state.get("reflection_feedback", "")
+    entities = state.get("entities", [])
+    
+    # 추출에 문제점이 있고 아직 최대 3회 재시도를 초과하지 않은 경우
+    if (feedback or not entities) and retry_count < 3:
+        print(f"    ⚠️ [Self-Reflection] 엔티티 품질 미달 (시도 {retry_count}/3). 피드백: {feedback[:100]}...")
+        return "extract_entities"  # 자기반성 루프로 복귀
+        
+    if feedback and retry_count >= 3:
+        print(f"    🚨 [Self-Reflection] 엔티티 3회 시도 초과. 검증 오류가 있지만 패스합니다. 피드백: {feedback[:100]}...")
+        
+    return "extract_relations"  # 검증을 정상 통과했거나 최대 3회 한도에 도달한 경우 통과
+
+
 builder = StateGraph(ArticleState)
 builder.add_node("check_ai", check_ai_relevance)
 builder.add_node("extract_entities", extract_entities)
 builder.add_node("extract_relations", extract_relations)
 builder.set_entry_point("check_ai")
 builder.add_conditional_edges("check_ai", route_after_check)
-builder.add_edge("extract_entities", "extract_relations")
+
+# 자기반성 조건부 엣지 매핑
+builder.add_conditional_edges(
+    "extract_entities",
+    validate_entities,
+    {
+        "extract_entities": "extract_entities",
+        "extract_relations": "extract_relations"
+    }
+)
+
 builder.add_edge("extract_relations", END)
 pipeline = builder.compile()
 
@@ -303,6 +383,8 @@ def main() -> None:
             is_ai_related=False,
             entities=[],
             relations=[],
+            retry_count=0,
+            reflection_feedback="",
         )
         out = pipeline.invoke(state)
         if out["is_ai_related"]:

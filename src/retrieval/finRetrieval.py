@@ -38,7 +38,7 @@ class HybridResult:
     """GraphRAG 또는 일반 지식 기반 통합 응답 결과"""
 
     answer: str            # 최종 답변 문자열
-    mode: str              # "graph": 그래프 검색 기반 | "general": GPT-4o 일반 지식 기반
+    mode: str              # "graph": 그래프 검색 기반 | "general": GPT-4o-mini 일반 지식 기반
     retriever_result: Any = None  # RetrieverResult (mode="graph"일 때만 유효)
 
 
@@ -294,7 +294,7 @@ class LazyGraphRAG:
             return
             
         # OpenAI 클라이언트 및 임베더 지연 초기화 (CI 크래시 방지)
-        self._rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
+        self._rag_llm = OpenAILLM(model_name="gpt-4o-mini", model_params={"temperature": 0})
         embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
         driver = get_neo4j_driver()
@@ -349,7 +349,7 @@ class LazyGraphRAG:
         )
 
     def _is_context_sufficient(self, query_text: str, history: list, retriever_result: Any) -> bool:
-        """검색된 컨텍스트가 질문 및 이전 대화 흐름에 실질적으로 도움이 되는 금융/기술 뉴스 데이터인지 GPT-4o로 판단"""
+        """검색된 컨텍스트가 질문 및 이전 대화 흐름에 실질적으로 도움이 되는 금융/기술 뉴스 데이터인지 GPT-4o-mini로 판단"""
         if retriever_result is None:
             return False
         if not hasattr(retriever_result, "items") or not retriever_result.items:
@@ -360,7 +360,7 @@ class LazyGraphRAG:
         if len(total_content) < 100:
             return False
 
-        # GPT-4o 기반 지능적 자가 진단 (이전 대화 히스토리 및 질문의 맥락 결합 판정)
+        # GPT-4o-mini 기반 지능적 자가 진단 (이전 대화 히스토리 및 질문의 맥락 결합 판정)
         try:
             assert self._rag_llm is not None
             context_snippet = total_content[:800]
@@ -414,12 +414,12 @@ class LazyGraphRAG:
         return normalized
 
     def _generate_general_answer(self, query_text: str, history: list) -> str:
-        """그래프 검색 결과 없이 GPT-4o 일반 지식으로 답변 생성 (대화 히스토리 반영)"""
+        """그래프 검색 결과 없이 GPT-4o-mini 일반 지식으로 답변 생성 (대화 히스토리 반영)"""
         assert self._rag_llm is not None
         system_prompt = (
             "당신은 AI 및 핀테크 기술 트렌드 전문가이자, 취업 준비생의 역량 분석을 돕는 전략 컨설턴트입니다.\n"
             "현재 FinGraph 지식 그래프(Neo4j GraphRAG)에서 관련 뉴스 기사를 찾지 못했습니다.\n"
-            "이전 대화 맥락을 충분히 반영하고, GPT-4o의 일반 학습 데이터에 기반하여 최선을 다해 전문적으로 답변해 주세요.\n\n"
+            "이전 대화 맥락을 충분히 반영하고, GPT-4o-mini의 일반 학습 데이터에 기반하여 최선을 다해 전문적으로 답변해 주세요.\n\n"
             "[중요 지침]\n"
             "- 실제 존재하지 않는 뉴스 링크, 날짜, 가짜 URL을 절대 생성하지 마세요.\n"
             "- 가능하다면 취업 준비생이 면접/자소서에 활용할 수 있는 실질적인 인사이트를 포함해 주세요.\n"
@@ -460,7 +460,7 @@ class LazyGraphRAG:
                 retriever_result=rag_result.retriever_result,
             )
         else:
-            # 3b. 일반 지식 기반 -> 히스토리 포함 GPT-4o 직접 호출
+            # 3b. 일반 지식 기반 -> 히스토리 포함 GPT-4o-mini 직접 호출
             answer = self._generate_general_answer(query_text, history)
             return HybridResult(answer=answer, mode="general", retriever_result=None)
 

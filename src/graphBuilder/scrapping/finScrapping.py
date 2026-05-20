@@ -245,51 +245,55 @@ print(f"[SAVE]    - AI 핀테크 기사: {len(df_filtered)}건")
 
 
 # ── 4단계: 키워드 빈도 시각화 ──
-import platform
-from collections import Counter
+try:
+    import platform
+    from collections import Counter
 
-import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
 
-# 폰트 깨짐 방지 (Mac 환경: AppleGothic)
-if platform.system() == "Darwin":
-    plt.rc("font", family="AppleGothic")
-plt.rcParams["axes.unicode_minus"] = False
+    # 폰트 깨짐 방지 (Mac 환경: AppleGothic)
+    if platform.system() == "Darwin":
+        plt.rc("font", family="AppleGothic")
+    plt.rcParams["axes.unicode_minus"] = False
 
-if not filtered_articles:
-    print("시각화할 데이터가 없습니다.")
-else:
-    # 빈도수 계산
-    all_kw = [kw for row in filtered_articles for kw in row["matched_keywords"].split(", ")]
-    kw_counts = Counter(all_kw)
+    if not filtered_articles:
+        print("시각화할 데이터가 없습니다.")
+    else:
+        # 빈도수 계산
+        all_kw = [kw for row in filtered_articles for kw in row["matched_keywords"].split(", ")]
+        kw_counts = Counter(all_kw)
 
-    # 📌 변경 포인트: FINTECH_AI_KEYWORDS 전체 목록을 순서대로 그래프에 강제 표시 (0건 포함)
-    keywords = FINTECH_AI_KEYWORDS
-    counts = [kw_counts.get(kw, 0) for kw in keywords]
+        # 📌 변경 포인트: FINTECH_AI_KEYWORDS 전체 목록을 순서대로 그래프에 강제 표시 (0건 포함)
+        keywords = FINTECH_AI_KEYWORDS
+        counts = [kw_counts.get(kw, 0) for kw in keywords]
 
-    plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(12, 6))
 
-    # 막대 그래프 생성
-    bars = plt.bar(keywords, counts, color="skyblue", edgecolor="white")
+        # 막대 그래프 생성
+        bars = plt.bar(keywords, counts, color="skyblue", edgecolor="white")
 
-    # 막대 위에 숫자(빈도수) 표시
-    for bar in bars:
-        height = bar.get_height()
-        # 막대의 중앙(x), 막대의 높이(y) 위치에 텍스트를 배치
-        plt.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            height,
-            f"{height}",
-            ha="center",
-            va="bottom",
-            size=11,
-            fontweight="bold",
-            color="black",
-        )
+        # 막대 위에 숫자(빈도수) 표시
+        for bar in bars:
+            height = bar.get_height()
+            # 막대의 중앙(x), 막대의 높이(y) 위치에 텍스트를 배치
+            plt.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height,
+                f"{height}",
+                ha="center",
+                va="bottom",
+                size=11,
+                fontweight="bold",
+                color="black",
+            )
 
-    plt.title("수집된 AI 핀테크 기사 키워드 출현 빈도 (전체)", fontsize=15, pad=15)
-    plt.xlabel("키워드", fontsize=12)
-    plt.ylabel("출현 횟수 (건)", fontsize=12)
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+        plt.title("수집된 AI 핀테크 기사 키워드 출현 빈도 (전체)", fontsize=15, pad=15)
+        plt.xlabel("키워드", fontsize=12)
+        plt.ylabel("출현 횟수 (건)", fontsize=12)
+        plt.grid(axis="y", linestyle="--", alpha=0.7)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+except ImportError:
+    print("[INFO] matplotlib 라이브러리가 설치되어 있지 않아 시각화 단계를 건너뜁니다.")
+

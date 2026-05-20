@@ -225,7 +225,6 @@ body, .gradio-container {
 /* ── 챗봇 컨테이너 테두리 제거 ── */
 div[data-testid="chatbot"], .chatbot-container, .chatbot {
     border: none !important;
-    overflow: visible !important; 
 }
 
 /* ── 챗봇 내부 Placeholder(소개글 영역) 상단 짤림 영구 차단 ── */
@@ -408,21 +407,16 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
 }
 
 /* ── 사용자 버블 (다크그레이 프리미엄 테마) ── */
-.message.user, [data-testid="user"] .message {
+.message.user {
     background-color: #111827 !important;
     border-radius: 12px 12px 0 12px !important;
-    padding: 7px 13px !important; 
+    padding: 10px 14px !important; 
     margin: 2px 0 !important; 
     border: none !important;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
-    min-height: unset !important; 
+    color: #ffffff !important;
 }
-[data-testid="user"] > div, .bubble-wrap [data-testid="user"], .message-wrap.user > div, .message-row.user {
-    background: transparent !important;
-    background-color: transparent !important;
-    border: none !important;
-}
-[data-testid="user"] .message *, .message.user * {
+.message.user * {
     color: #ffffff !important;
     line-height: 1.4 !important; 
     margin: 0 !important; 
@@ -430,7 +424,7 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
 }
 
 /* ── 봇 버블 (화이트 & 그레이 경계선 테마) ── */
-.message.bot, [data-testid="bot"] .message, [data-testid="bot"] > div, .message-wrap.bot > div, .message.bot, .message-row.bot .message {
+.message.bot {
     background-color: #ffffff !important;
     color: #1f2937 !important;
     border: 1px solid #e5e7eb !important;
@@ -438,8 +432,7 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     padding: 16px 20px !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
-.message.bot p, .message.bot span,
-.message.bot li, .message.bot div {
+.message.bot * {
     color: #1e3a5f !important;
     background: transparent !important;
 }

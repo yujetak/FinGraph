@@ -27,6 +27,42 @@ from neo4j_graphrag.llm import OpenAILLM
 dotenv.load_dotenv()
 
 
+# Windows cp949 인코딩 환경에서 이모지 출력 시 UnicodeEncodeError 방지를 위한 안전한 print 함수 정의
+def safe_print(*args, **kwargs) -> None:
+    import sys
+    try:
+        # end나 sep 인자를 올바르게 처리할 수 있도록 내장 print의 기능 준수
+        sep = kwargs.get("sep", " ")
+        end = kwargs.get("end", "\n")
+        msg = sep.join(map(str, args))
+        sys.stdout.write(msg + end)
+        sys.stdout.flush()
+    except UnicodeEncodeError:
+        msg = sep.join(map(str, args))
+        cleaned = (
+            msg.replace("✅", "[OK]")
+            .replace("⚠️", "[WARN]")
+            .replace("🚨", "[ERR]")
+            .replace("⏭️", "[SKIP]")
+            .replace("🤖", "[AI]")
+            .replace("🏢", "[COMP]")
+            .replace("🌌", "[GRAPH]")
+            .replace("📰", "[NEWS]")
+            .replace("🔬", "[TECH]")
+            .replace("🔗", "[LINK]")
+        )
+        try:
+            sys.stdout.write(cleaned + end)
+            sys.stdout.flush()
+        except Exception:
+            ascii_msg = msg.encode("ascii", errors="replace").decode("ascii")
+            sys.stdout.write(ascii_msg + end)
+            sys.stdout.flush()
+
+
+print = safe_print
+
+
 def get_neo4j_driver() -> neo4j.Driver:
     uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
     client_id = os.getenv("NEO4J_CLIENT_ID")

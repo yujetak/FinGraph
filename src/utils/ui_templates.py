@@ -237,7 +237,7 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     height: 100% !important;
     min-height: 400px !important;
     flex-grow: 1 !important; 
-    overflow: visible !important; 
+    overflow: auto !important; 
     margin: 0 auto !important;
 }
 
@@ -401,13 +401,18 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
 }
 
 /* ── 메시지 버블 기본 크기 축소 (사용자/봇 공통 세로 높이 최적화) ── */
-.message {
+.message,
+.message-wrap .message,
+[data-testid="user-message"],
+[data-testid="bot-message"] {
     padding: 10px 14px !important;
     min-height: auto !important;
 }
 
 /* ── 사용자 버블 (다크그레이 프리미엄 테마) ── */
-.message.user {
+.message.user,
+.message.user-message,
+[data-testid="user-message"] {
     background-color: #111827 !important;
     border-radius: 12px 12px 0 12px !important;
     padding: 10px 14px !important; 
@@ -416,7 +421,9 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
     color: #ffffff !important;
 }
-.message.user * {
+.message.user *,
+.message.user-message *,
+[data-testid="user-message"] * {
     color: #ffffff !important;
     line-height: 1.4 !important; 
     margin: 0 !important; 
@@ -424,7 +431,9 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
 }
 
 /* ── 봇 버블 (화이트 & 그레이 경계선 테마) ── */
-.message.bot {
+.message.bot,
+.message.bot-message,
+[data-testid="bot-message"] {
     background-color: #ffffff !important;
     color: #1f2937 !important;
     border: 1px solid #e5e7eb !important;
@@ -432,7 +441,9 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     padding: 16px 20px !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
-.message.bot * {
+.message.bot *,
+.message.bot-message *,
+[data-testid="bot-message"] * {
     color: #1e3a5f !important;
     background: transparent !important;
 }
@@ -516,6 +527,15 @@ button[aria-label="thumbs up"],
 button[aria-label="thumbs down"],
 .bot + div > div > button,
 .svelte-1ed2p3z { display: none !important; }
+
+/* ── Gradio 6.x Chatbot 내부 오버플로우 및 스크롤바 최적화 ── */
+div[data-testid="chatbot"] .message-wrap,
+div[data-testid="chatbot"] .message-container,
+div[data-testid="chatbot"] > div.wrapper,
+div[data-testid="chatbot"] > div.scrollbar {
+    overflow-y: auto !important;
+    max-height: 600px !important;
+}
 """
 
 

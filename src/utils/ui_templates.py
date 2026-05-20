@@ -44,7 +44,8 @@ body, .gradio-container {
     border-radius: 12px !important;
     padding: 24px 20px !important;
     background: #ffffff !important;
-    height: 700px !important; 
+    min-height: 700px !important; 
+    height: 100% !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -227,17 +228,10 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     border: none !important;
 }
 
-/* ── 챗봇 내부 Placeholder(소개글 영역) 상단 짤림 영구 차단 ── */
+/* ── 챗봇 내부 Placeholder(소개글 영역) ── */
 .placeholder, [class*="placeholder"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    padding-top: 40px !important;
-    height: 100% !important;
-    min-height: 400px !important;
-    flex-grow: 1 !important; 
-    overflow: auto !important; 
+    padding: 20px !important;
+    overflow: auto !important;
     margin: 0 auto !important;
 }
 

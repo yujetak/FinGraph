@@ -2,6 +2,9 @@ import os
 import subprocess
 import sys
 
+# 프로젝트 루트 디렉토리를 Python 경로에 추가하여 ModuleNotFoundError 방지
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 
 def run_command(cmd):
     print("\n========================================")

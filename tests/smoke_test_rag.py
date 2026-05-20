@@ -17,6 +17,10 @@ import os
 import sys
 import time
 
+# 프로젝트 루트 디렉토리를 Python 경로에 추가하여 ModuleNotFoundError 방지
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
 # Windows 환경에서 유니코드 이모지 출력 시 UnicodeEncodeError(cp949) 방지를 위한 stdout 인코딩 재설정
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 

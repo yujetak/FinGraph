@@ -121,6 +121,13 @@ def test_4_core_scenarios():
 - [x] **3. 커스텀 CSS 및 버튼 고대비화**: 흰색 배경에서 버튼이 완벽하게 보이도록 고대비 Indigo/Blue 색상 및 프리미엄 스타일 지정
 - [x] **4. 정적/동적 방어 테스트**: Ruff/Mypy 통과, `python -c "import app"` 정상 빌드, `smoke_test_rag.py` 성공 검증
 
+## 개발 체크리스트 (Gradio UI/UX 디테일 개선 단계)
+- [ ] **1. 화면 너비 대폭 확대**: `.gradio-container` 및 블록 레이아웃의 max-width를 대폭 확장하여 대화면 지원
+- [ ] **2. 예시 질문 최상단(챗봇 위) 이동**: CSS Flexbox order 또는 Blocks 구조 개편을 통해 예시 질문을 화면 맨 위로 고정
+- [ ] **3. 버튼 테두리 얇게 개선**: 예시 질문 버튼의 포인트 보더 두께를 축소하고 얇고 깔끔하게 미니멀리즘 디자인 적용
+- [ ] **4. 정적/동적 검증**: Ruff/Mypy 통과 및 `browser_subagent`를 통한 실제 렌더링 무결성 스크린샷 검증
+
+
 
 ## 배포 및 자동화 파이프라인 (Pipeline Automation)
 - [x] **매일 새벽 1시(KST) 최신화 파이프라인 구축**: 크롤링(`finScrapping.py`) ➡️ 지식 그래프 적재(`finGraph.py`)로 이어지는 엔드투엔드(End-to-End) 자동화.
@@ -146,4 +153,11 @@ def test_4_core_scenarios():
     2. 삼성전자(Gauss 2, Galaxy AI, HBM3E, NPU) 및 카카오(Kanana, KoGPT 2.0, 카나나 워크)의 실제 고품질 실물 뉴스 아티클 및 엔티티/관계 구조, 벡터 임베딩을 AuraDB에 적재하는 전용 스크립트(`inject_gold_data.py`)를 개발 및 로드 완료.
     3. `finRetrieval.py` 내의 `Text2Cypher` 예제들과 RAG 시스템 프롬프트를 전면 개편하여 구조적 Cypher 검색 시에도 실제 기사의 제목 및 URL([출처 링크])을 자동 매핑하여 답변하도록 출처 신뢰성을 대폭 강화.
   - **검증**: `ruff`, `mypy` 린트와 타입 검사를 무결점 통과하였고, 4대 골드 시나리오를 검증하는 `smoke_test_rag.py`에서 **4/4 시나리오 전원 초고속 완전 합격(PASS)**하여 최고의 완성도를 입증함.
+
+- [x] **메인 진입점(app.py) 프레젠테이션 자원 모듈화 및 클린 코드 개편**:
+  - **현상**: 450줄이 넘는 방대한 정적 CSS 스타일시트와 HTML 문자열 템플릿(GNB, 2x3 상태 대시보드 템플릿 등)이 메인 진입점인 `app.py` 내에 인라인으로 섞여 있어, 개발 유지 보수 효율성과 코드 가독성이 현저히 저해되는 문제 확인.
+  - **조치**:
+    1. 모든 정적/동적 프레젠테이션 요소(`CUSTOM_CSS`, `GNB_HTML`, `build_stats_html`)를 신규 유틸리티 모듈인 `src/utils/ui_templates.py`로 완벽하게 이전하여 코드를 물리적으로 완전 분리.
+    2. `app.py`에서는 간단히 `from src.utils.ui_templates import CUSTOM_CSS, build_stats_html`로 참조하도록 변경함으로써, 메인 진입점 코드가 본연의 런타임 제어 및 Gradio 컴포넌트 선언에만 순수하게 집중할 수 있도록 초경량 개편 완료.
+  - **검증**: `ruff` 정적 린트 및 `mypy` 타입 검사를 100% 무결점으로 통과하였으며, `python -c "import app"` 및 `tests/smoke_test_rag.py` 하이브리드 RAG 테스트도 전원 완벽하게 합격(PASS)함.
 

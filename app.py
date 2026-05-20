@@ -248,6 +248,15 @@ def get_db_stats() -> Dict[str, Any]:
                 "RETURN t.name as name, COALESCE(t.description, 'AI 혁신 기술 인프라') as desc LIMIT 8"
             )
             stats["techs_list"] = [{"name": r["name"], "desc": r["desc"]} for r in res_tech_list]
+            
+            # 2.5 최신 주목 기업 리스트 (상위 5개)
+            res_comp_list = session.run(
+                "MATCH (c:AICompany) "
+                "OPTIONAL MATCH (a:Article)-[:MENTIONS]->(c) "
+                "RETURN c.name as name, count(a) as cnt "
+                "ORDER BY cnt DESC LIMIT 5"
+            )
+            stats["companies_list"] = [{"name": r["name"]} for r in res_comp_list]
 
             # 3. 최근 기사 목록 조회 (최근 4개)
             res_art_list = session.run(
@@ -275,6 +284,15 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
     if not keyword_html:
         keyword_html = '<div style="font-size:12px; color:#94a3b8;">등록된 키워드가 없습니다.</div>'
 
+    # 1.5. 최신 주목 기업 배지 HTML 생성 (키워드 배지와 동일 스타일로 통일)
+    company_html: str = ""
+    for c in stats.get("companies_list", []):
+        company_html += f"""
+        <span class="keyword-badge">🏢 {c['name']}</span>
+        """
+    if not company_html:
+        company_html = '<div style="font-size:12px; color:#94a3b8;">등록된 기업이 없습니다.</div>'
+
     # 2. 최근 기사 리스트 HTML 생성 (최대 4개) - 전체 영역 클릭 시 이동하도록 a 태그로 래핑
     news_list_html: str = ""
     for a in stats.get("recent_articles", []):
@@ -293,7 +311,7 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
     if not news_list_html:
         news_list_html = '<div style="font-size:12px; color:#94a3b8;">최근 수집된 기사가 없습니다.</div>'
 
-    node_count = stats['companies'] + stats['technologies']
+    # node_count = stats['companies'] + stats['technologies']
 
     html: str = f"""
     <div class="dashboard-container">
@@ -305,7 +323,7 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
         </div>
         <p style="font-size: 11px; color: #475569; margin-top: -2px; margin-bottom: 12px; font-weight: 600;">GraphRAG 실시간 분석 엔진 상태</p>
         
-        <!-- 실시간 엔진 텔레메트리 (4개 메트릭) -->
+        <!-- 실시간 엔진 텔레메트리 (4개 메트릭 통폐합) -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-lbl">💡 분석 모델</div>
@@ -320,32 +338,19 @@ def build_stats_html(stats: Dict[str, Any]) -> str:
                 <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">{stats['technologies']}개</div>
             </div>
             <div class="stat-card">
-                <div class="stat-lbl">🔐 DB 연결</div>
-                <div class="stat-val" style="font-size: 12px !important; font-weight: 800 !important; color: #0d9488; margin-top: 3px;"><span style="background: rgba(13, 148, 136, 0.12); padding: 2px 6px; border-radius: 5px; display: inline-block;">Active</span></div>
-            </div>
-        </div>
-
-        <!-- 수집된 데이터 규모 -->
-        <div class="stats-grid" style="margin-top: 10px; margin-bottom: 8px;">
-            <div class="stat-card" style="padding: 8px 10px;">
                 <div class="stat-lbl">📰 분석용 뉴스 기사</div>
-                <div class="stat-val" style="color: #334155;">{stats['articles']}건</div>
+                <div class="stat-val" style="font-size: 13px !important; font-weight: 800 !important; color: #334155;">{stats['articles']}건</div>
             </div>
-            <div class="stat-card" style="padding: 8px 10px;">
-                <div class="stat-lbl">🧬 추출된 지식 연결망</div>
-                <div class="stat-val" style="color: #334155;">{node_count}개</div>
-            </div>
-        </div>
-
-        <!-- 데이터 배경 정보 설명 패널 (사용자 이해를 돕는 배경 정보 친절 서술) -->
-        <div style="font-size: 11px; color: #475569; line-height: 1.5; margin-top: 8px; margin-bottom: 15px; padding: 10px; background: rgba(241, 245, 249, 0.7); border: 1px solid #cbd5e1; border-radius: 8px;">
-            ℹ️ <b>데이터 수집 배경 정보</b><br>
-            실시간 뉴스 웹 크롤러가 국내 IT/금융 기사 <b>{stats['articles']}건</b>을 정밀 수집하였으며, 뉴스 본문을 분석하여 기사 속 주요 기업·핵심 기술·서비스 간의 입체적 연관 관계 <b>{node_count}개</b>를 연결망(지식 그래프)으로 완벽하게 연동하였습니다.
         </div>
         
         <div class="section-subtitle" style="color: #334155;">💡 최신 뉴스 키워드</div>
         <div class="keyword-container">
             {keyword_html}
+        </div>
+        
+        <div class="section-subtitle" style="color: #334155;">🏢 최신 주목 기업</div>
+        <div class="keyword-container">
+            {company_html}
         </div>
         
         <div class="section-subtitle" style="color: #334155;">📰 최신 뉴스 피드</div>
@@ -581,25 +586,59 @@ body {
     border-left-color: #2dd4bf !important;
 }
 
+/* ── 웰컴 보드(소개글 카드) 상단 짤림 방어 및 결합 준비 ── */
+.placeholder, [class*="placeholder"] {
+    justify-content: flex-start !important; 
+    padding-top: 15px !important; /* 상단 짤림 완전 방지 */
+    margin-bottom: 0 !important; /* 아래쪽 간격 완전 제거 */
+    padding-bottom: 0 !important;
+    height: auto !important; /* 껍데기 높이 고정 해제 */
+    min-height: unset !important;
+}
+.placeholder .prose {
+    background: #f8fafc !important; /* 쿨톤 회색 */
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: none !important; /* 아래쪽 둥근 선 제거로 결합 준비 */
+    border-radius: 12px 12px 0 0 !important; /* 아래 모서리 직각 */
+    padding: 24px 24px 10px 24px !important; 
+    max-width: 800px !important; 
+    width: 100% !important;
+    margin: 0 auto !important; 
+    position: relative !important;
+    z-index: 2 !important; 
+    display: block !important; /* 은신 마법 방어 */
+    visibility: visible !important;
+    color: #334155 !important;
+}
+
 /* 2x2 grid layout for chatbot example buttons (Stitch Action Grid style) */
 [class*="examples"], .gr-samples-wrapper, .examples-container {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px !important;
-    margin-top: 15px !important;
-    margin-bottom: 15px !important;
-    background: transparent !important;
-    border: none !important;
+    
+    /* 🌟 핵심: 웰컴 보드와 한 몸이 되기 위한 완벽 밀착 및 껍데기 🌟 */
+    margin: -1px auto 40px auto !important; /* 웰컴 보드 바로 밑에 찰싹 붙음 */
+    background: #f8fafc !important; /* 웰컴 보드와 동일한 회색 배경 */
+    border: 1px solid #e2e8f0 !important;
+    border-top: none !important; /* 윗선 제거로 한 몸 결합 */
+    border-radius: 0 0 12px 12px !important; /* 윗 모서리 직각 */
+    padding: 5px 24px 24px 24px !important; 
+    max-width: 800px !important; /* 웰컴 보드 너비 일치 */
+    width: 100% !important;
+    position: relative !important;
+    z-index: 1 !important; /* 겹칠 때 흰 선 안보이게 밑으로 */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important; 
 }
 [class*="examples"] button {
-    text-align: left !important;
+    text-align: center !important; /* 사용자 요청: 가운데 정렬 */
     padding: 14px 18px !important;
-    background: #ffffff !important; /* 깨끗하고 단정한 화이트 */
-    border: 1px solid #cbd5e1 !important; /* 소프트한 슬레이트 테두리 */
+    background: #e0f2fe !important; /* 사용자 요청: 연한 하늘색(파랑) 배경 */
+    border: 1px solid #bae6fd !important; 
     border-radius: 10px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
-    color: #0f172a !important; /* 단정한 검정색 */
+    color: #000000 !important; /* 사용자 요청: 검은색 텍스트 */
     line-height: 1.4 !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
     transition: all 0.2s ease-in-out !important;
@@ -607,6 +646,9 @@ body {
     height: auto !important;
     min-height: 54px !important;
     cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 .dark [class*="examples"] button {
     background: rgba(30, 41, 59, 0.5) !important;
@@ -615,9 +657,9 @@ body {
 }
 [class*="examples"] button:hover {
     transform: translateY(-1px) !important;
-    background: #f8fafc !important; /* 아주 옅은 오프화이트 호버 */
-    border-color: #94a3b8 !important;
-    color: #0f172a !important;
+    background: #bae6fd !important; /* 약간 짙은 하늘색 호버 */
+    border-color: #7dd3fc !important;
+    color: #1e3a8a !important; /* 사용자 요청: 진한 파랑색 텍스트 */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06) !important;
 }
 .dark [class*="examples"] button:hover {
@@ -724,15 +766,14 @@ button.variant-secondary:hover,
 }
 
 /* Chatbot 라벨/탭 완전 숨김 (불필요한 보라색/하늘색 색상 및 테두리 원천 차단) */
-.chatbot > div:first-child,
-[class*="chatbot"] > div:first-child,
+/* 주의: .chatbot > div:first-child 는 웰컴카드를 지워버릴 수 있으므로 삭제! */
 .chatbot-label,
 div[class*="chatbot"] .label,
 [data-testid="chatbot"] .label,
 .chatbot-header,
-div[class*="chatbot"] > div:first-child span,
 .gr-panel-title,
-.gr-chatbot-label {
+.gr-chatbot-label,
+.label-wrap {
     display: none !important;
 }
 
@@ -751,11 +792,11 @@ div[class*="chatbot"] > div:first-child span,
 textarea, 
 [class*="input-container"] textarea,
 [data-testid="textbox"] textarea {
-    height: 58px !important;
-    min-height: 58px !important;
-    max-height: 58px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
     font-size: 13px !important;
-    padding: 18px 16px !important; /* 위아래 패딩을 18px로 대칭 조절하여 텍스트가 수직 정중앙에 완벽하게 배치 */
+    padding: 13px 16px !important; /* 위아래 패딩을 줄여서 높이에 맞게 조절 */
     line-height: 1.5 !important;
     border-radius: 8px !important;
     border: 1px solid #cbd5e1 !important;
@@ -782,7 +823,7 @@ button[class*="submit-btn"],
     margin-left: 12px !important;
     border-radius: 8px !important;
     min-width: 95px !important;
-    height: 58px !important; /* 입력창의 height(58px)와 100% 동일하게 일치시켜 완벽한 대칭 구조 달성 */
+    height: 48px !important; /* 입력창의 height(48px)와 100% 동일하게 일치 */
     padding: 0 16px !important;
     display: flex !important;
     align-items: center !important;
@@ -822,9 +863,21 @@ div:has(> [data-testid="submit-button"]),
 }
 """
 
+CHATBOT_DESCRIPTION = """
+<div class="prose">
+<h3>🌌 국내 AI 뉴스 기사를 기반으로 구축된 지식 그래프(GraphRAG)에 질문하세요.</h3>
+<ul>
+<li>📰 <b>기업별 AI 트렌드</b> — 삼성, 카카오, 네이버 등 주요 기업의 최신 AI 동향</li>
+<li>🔬 <b>기술 키워드 분석</b> — LLM, 생성형 AI, 파운데이션 모델 등 핵심 기술 정리</li>
+<li>🔗 <b>실제 뉴스 출처 제공</b> — 답변마다 근거 기사 링크 포함</li>
+</ul>
+<p>👇 아래 예시 질문 버튼을 클릭하거나 직접 입력해 보세요.</p>
+</div>
+"""
+
 interface_kwargs = {
     "fn": chat,
-    "chatbot": gr.Chatbot(height=500),
+    "chatbot": gr.Chatbot(height=700, placeholder=CHATBOT_DESCRIPTION),
     "textbox": gr.Textbox(
         placeholder="분석하고 싶은 내용을 자연어로 입력해주세요...",
         container=False,

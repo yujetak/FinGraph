@@ -15,11 +15,16 @@ CUSTOM_CSS: str = """
 /* ── Google Fonts 로드 ── */
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;600&display=swap');
 
-/* ── 전체 배경 / 기본 폰트 ── */
+/* ── 전체 배경 / 기본 폰트 / 화면 너비 확대 ── */
 body, .gradio-container {
     background-color: #F6F5FA !important;
     font-family: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     color: #1e3a5f !important;
+}
+.gradio-container {
+    max-width: 1400px !important;
+    width: 95% !important;
+    margin: 0 auto !important;
 }
 
 /* ── Ambient glow ── */
@@ -37,8 +42,12 @@ body, .gradio-container {
 .sidebar-container {
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
-    padding: 20px 18px !important;
+    padding: 24px 20px !important;
     background: #ffffff !important;
+    height: 700px !important; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 /* ── 구분선 ── */
@@ -128,13 +137,13 @@ body, .gradio-container {
 }
 .keyword-badge {
     display: inline-block;
-    background: transparent !important; /* 배경색 없음 */
-    border: 1px solid #ddd6fe !important; /* 아주 연한 보라 테두리 */
+    background: transparent !important;
+    border: 1px solid #ddd6fe !important;
     border-radius: 9999px !important;
     padding: 4px 12px !important;
     font-size: 11px !important;
     font-weight: 600 !important;
-    color: #8b5cf6 !important; /* 기업(진한 보라)보다 연하고 밝은 보라 텍스트 */
+    color: #8b5cf6 !important;
 }
 .keyword-badge-first {
     background: transparent !important;
@@ -151,13 +160,13 @@ body, .gradio-container {
 }
 .company-badge {
     display: inline-block;
-    background: transparent !important; /* 배경색 없음 */
-    border: 1px solid #ddd6fe !important; /* 아주 연한 보라 테두리 */
+    background: transparent !important;
+    border: 1px solid #ddd6fe !important;
     border-radius: 9999px !important;
     padding: 4px 12px !important;
     font-size: 11px !important;
     font-weight: 600 !important;
-    color: #8b5cf6 !important; /* 주요 기술 키워드와 동일한 색상 */
+    color: #8b5cf6 !important;
 }
 .company-badge-first {
     background: transparent !important;
@@ -167,8 +176,9 @@ body, .gradio-container {
 
 /* ── 최신 뉴스 피드 ── */
 .news-feed-container {
-    max-height: 260px;
-    overflow-y: auto;
+    flex-grow: 1 !important;
+    max-height: 250px !important;
+    overflow-y: auto !important;
 }
 .news-feed-container::-webkit-scrollbar { width: 3px; }
 .news-feed-container::-webkit-scrollbar-track { background: transparent; }
@@ -212,45 +222,117 @@ body, .gradio-container {
     margin-top: 4px;
 }
 
-/* ── 예시 질문 버튼 (2x2 그리드) ── */
+/* ── 챗봇 컨테이너 테두리 제거 ── */
+div[data-testid="chatbot"], .chatbot-container, .chatbot {
+    border: none !important;
+    overflow: visible !important; 
+}
+
+/* ── 챗봇 내부 Placeholder(소개글 영역) 상단 짤림 영구 차단 ── */
+.placeholder, [class*="placeholder"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding-top: 40px !important;
+    height: 100% !important;
+    min-height: 400px !important;
+    flex-grow: 1 !important; 
+    overflow: visible !important; 
+    margin: 0 auto !important;
+}
+
+/* ── 소개글(Prose) 웰컴 보드 (위쪽 절반) ── */
+.placeholder .prose {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: none !important;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 24px 24px 10px 24px !important; 
+    max-width: 800px !important;
+    width: 100% !important;
+    margin: 0 auto !important; 
+    display: block !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+.placeholder h3, [class*="placeholder"] h3 {
+    color: #334155 !important; 
+    font-weight: 800 !important;
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+}
+.placeholder .prose ul {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+    margin-bottom: 12px !important;
+}
+.placeholder .prose li {
+    margin-bottom: 4px !important; 
+    color: #475569 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+.placeholder .prose p:last-child {
+    font-weight: 700 !important;
+    color: #4c1d95 !important; 
+    background: #f3e8ff !important; 
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+}
+
+/* ── 예시 질문 컨테이너 (아래쪽 절반: 보드 병합 완료) ── */
 [class*="examples"], .gr-samples-wrapper, .examples-container {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-    margin-top: 12px !important;
-    margin-bottom: 8px !important;
-    background: transparent !important;
-    border: none !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 800px !important;
+    margin: -32px auto 40px auto !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-top: none !important;
+    border-radius: 0 0 12px 12px !important;
+    padding: 10px 24px 24px 24px !important; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important; 
+    position: relative !important;
+    z-index: 1 !important;
 }
-[class*="examples"] button {
-    text-align: left !important;
-    padding: 11px 13px !important;
-    background: rgba(255,255,255,0.70) !important;
-    border: 1px solid rgba(124,58,237,0.09) !important;
-    border-radius: 9px !important;
-    font-size: 12px !important;
+
+/* 개별 버튼 디자인 (연보라색 테마 & 강력한 중앙 정렬) */
+.examples-container button, div[data-testid="chatbot"] button.example, button.example, .example-btn {
+    border-radius: 8px !important;
+    padding: 16px !important;
+    text-align: center !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
-    color: #1e3a5f !important;
-    line-height: 1.4 !important;
-    box-shadow: none !important;
-    transition: all 0.16s ease !important;
-    white-space: normal !important;
-    height: auto !important;
-    min-height: 46px !important;
-    cursor: pointer !important;
+    color: #4c1d95 !important; 
+    background: #f5f3ff !important;
+    background-color: #f5f3ff !important;
+    border: 1px solid #e9d5ff !important; 
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease-in-out !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 80px !important; 
+    width: 100% !important;
+    white-space: normal !important; 
 }
-[class*="examples"] button:hover {
-    background: rgba(255,255,255,0.97) !important;
-    border-color: rgba(124,58,237,0.20) !important;
-    color: #1e3a5f !important;
-    box-shadow: 0 2px 8px rgba(124,58,237,0.06) !important;
-    transform: translateY(-1px) !important;
+
+.examples-container button:hover, div[data-testid="chatbot"] button.example:hover, button.example:hover, .example-btn:hover {
+    border-color: #a855f7 !important; 
+    background: #f3e8ff !important; 
+    background-color: #f3e8ff !important; 
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08) !important;
+    color: #7c3aed !important;
 }
 
 /* ── 전송 버튼: 너비 넓고 높이 입력창에 맞춤 ── */
-button[class*="submit-btn"],
-[data-testid="submit-button"],
-#submit-btn {
+button[class*="submit-btn"], #submit-btn, button[id*="submit"], button.submit-button {
     background: linear-gradient(135deg, #1e3a5f 0%, #7c3aed 100%) !important;
     color: white !important;
     font-weight: 700 !important;
@@ -268,6 +350,8 @@ button[class*="submit-btn"],
     align-items: center !important;
     justify-content: center !important;
     box-sizing: border-box !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 button[class*="submit-btn"]:hover,
 [data-testid="submit-button"]:hover {
@@ -307,13 +391,6 @@ div:has(> [data-testid="submit-button"]),
     align-items: center !important;
 }
 
-/* ── 챗봇 컨테이너 ── */
-div[data-testid="chatbot"] {
-    background: transparent !important;
-    border: 1px solid rgba(30,58,95,0.08) !important;
-    border-radius: 12px !important;
-}
-
 /* ── 챗봇 탭/라벨 숨김 ── */
 .chatbot > div:first-child, [class*="chatbot"] > div:first-child,
 .chatbot-label, div[class*="chatbot"] .label,
@@ -330,24 +407,36 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     min-height: auto !important;
 }
 
-/* ── 사용자 버블 ── */
-.message.user {
-    background: rgba(30,58,95,0.06) !important;
-    border: 1px solid rgba(30,58,95,0.14) !important;
-    border-radius: 12px !important;
+/* ── 사용자 버블 (다크그레이 프리미엄 테마) ── */
+.message.user, [data-testid="user"] .message {
+    background-color: #111827 !important;
+    border-radius: 12px 12px 0 12px !important;
+    padding: 7px 13px !important; 
+    margin: 2px 0 !important; 
+    border: none !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+    min-height: unset !important; 
 }
-.message.user p, .message.user span,
-.message.user li, .message.user div {
-    color: #1e3a5f !important;
-    font-weight: 600 !important;
+[data-testid="user"] > div, .bubble-wrap [data-testid="user"], .message-wrap.user > div, .message-row.user {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+[data-testid="user"] .message *, .message.user * {
+    color: #ffffff !important;
+    line-height: 1.4 !important; 
+    margin: 0 !important; 
     background: transparent !important;
 }
 
-/* ── 봇 버블 ── */
-.message.bot {
-    background: rgba(255,255,255,0.65) !important;
-    border: 1px solid rgba(30,58,95,0.08) !important;
-    border-radius: 12px !important;
+/* ── 봇 버블 (화이트 & 그레이 경계선 테마) ── */
+.message.bot, [data-testid="bot"] .message, [data-testid="bot"] > div, .message-wrap.bot > div, .message.bot, .message-row.bot .message {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px 12px 12px 0 !important;
+    padding: 16px 20px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
 .message.bot p, .message.bot span,
 .message.bot li, .message.bot div {
@@ -407,7 +496,7 @@ button.secondary:hover, button.variant-secondary:hover {
     border-color: rgba(124,58,237,0.24) !important;
 }
 
-/* ── 메인 레이아웃 컬럼 높이 동기화 (챗봇 내부 깨짐 방지) ── */
+/* ── 메인 레이아웃 컬럼 높이 동기화 ── */
 #main-row { align-items: stretch !important; }
 #main-row > div[class*="column"] {
     display: flex !important;

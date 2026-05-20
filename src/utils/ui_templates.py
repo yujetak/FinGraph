@@ -42,20 +42,22 @@ body, .gradio-container {
 .sidebar-container {
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
-    padding: 24px 20px !important;
+    padding: 16px 16px !important;
     background: #ffffff !important;
     min-height: 700px !important; 
     height: 100% !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04) !important;
     display: flex !important;
     flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
 }
 
 /* ── 구분선 ── */
 .divider {
     border: none;
     border-top: 1px solid #e2e8f0;
-    margin: 14px 0;
+    margin: 6px 0 !important;
 }
 
 /* ── 패널 라벨 (섹션 제목) ── */
@@ -65,7 +67,8 @@ body, .gradio-container {
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    margin-bottom: 10px;
+    margin-bottom: 4px !important;
+    margin-top: 2px !important;
 }
 
 /* ── 상단 2 카드 (가로 배치) ── */
@@ -73,7 +76,7 @@ body, .gradio-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 4px !important;
 }
 .top-card {
     background: #f8fafc !important;
@@ -134,7 +137,7 @@ body, .gradio-container {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 4px !important;
 }
 .keyword-badge {
     display: inline-block;
@@ -157,7 +160,7 @@ body, .gradio-container {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 4px !important;
 }
 .company-badge {
     display: inline-block;
@@ -385,11 +388,11 @@ div:has(> [data-testid="submit-button"]),
 }
 
 /* ── 챗봇 탭/라벨 숨김 ── */
-.chatbot > div:first-child, [class*="chatbot"] > div:first-child,
 .chatbot-label, div[class*="chatbot"] .label,
 [data-testid="chatbot"] .label, .chatbot-header,
 .gr-panel-title, .gr-chatbot-label,
-[data-testid="chatbot"] > div:first-child,
+[data-testid="chatbot"] > label,
+div[class*="chatbot"] > label,
 label.svelte-1ipelgc, span.svelte-1ipelgc {
     display: none !important;
 }

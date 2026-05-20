@@ -231,7 +231,7 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     border: none !important;
 }
 
-/* ── 챗봇 영역 너비 70% 제어 및 중앙 정렬 ── */
+/* ── 챗봇 영역 너비 확대 및 중앙 정렬 ── */
 #chat-column {
     display: flex !important;
     flex-direction: column !important;
@@ -240,8 +240,8 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 }
 #chat-column > div,
 #chat-column > .form {
-    width: 70% !important;
-    max-width: 960px !important;
+    width: 96% !important;
+    max-width: 100% !important;
     margin: 0 auto !important;
     display: flex !important;
     flex-direction: column !important;

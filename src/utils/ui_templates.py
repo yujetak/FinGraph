@@ -238,23 +238,24 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     margin: 0 auto !important;
 }
 
-/* ── 소개글(Prose) 웰컴 보드 (위쪽 절반) ── */
+/* ── 소개글(Prose) 웰컴 보드 (독립적인 프리미엄 라운드 카드 구조) ── */
 .placeholder .prose {
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
-    border-bottom: none !important;
-    border-radius: 12px 12px 0 0 !important;
-    padding: 24px 24px 10px 24px !important; 
-    max-width: 800px !important;
+    border-radius: 12px !important;
+    padding: 24px !important; 
+    max-width: 920px !important;
     width: 100% !important;
     margin: 0 auto !important; 
     display: block !important;
     position: relative !important;
     z-index: 2 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
 }
 .placeholder h3, [class*="placeholder"] h3 {
     color: #334155 !important; 
     font-weight: 800 !important;
+    font-size: 21px !important;
     margin-top: 0 !important;
     margin-bottom: 12px !important;
 }
@@ -264,12 +265,17 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     margin-bottom: 12px !important;
 }
 .placeholder .prose li {
-    margin-bottom: 4px !important; 
+    margin-bottom: 6px !important; 
     color: #475569 !important;
-    font-size: 14px !important;
-    line-height: 1.5 !important;
+    font-size: 17px !important;
+    line-height: 1.55 !important;
+}
+.placeholder .prose p {
+    font-size: 17px !important;
+    line-height: 1.55 !important;
 }
 .placeholder .prose p:last-child {
+    font-size: 17px !important;
     font-weight: 700 !important;
     color: #4c1d95 !important; 
     background: #f3e8ff !important; 
@@ -279,19 +285,18 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     margin-bottom: 0 !important;
 }
 
-/* ── 예시 질문 컨테이너 (아래쪽 절반: 보드 병합 완료) ── */
+/* ── 예시 질문 컨테이너 (위쪽 보드와 동일 너비로 정렬된 독립 라운드 카드) ── */
 [class*="examples"], .gr-samples-wrapper, .examples-container {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
     width: 100% !important;
-    max-width: 800px !important;
-    margin: -32px auto 40px auto !important;
+    max-width: 920px !important;
+    margin: 16px auto 24px auto !important;
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
-    border-top: none !important;
-    border-radius: 0 0 12px 12px !important;
-    padding: 10px 24px 24px 24px !important; 
+    border-radius: 12px !important;
+    padding: 24px !important; 
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important; 
     position: relative !important;
     z-index: 1 !important;

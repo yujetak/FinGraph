@@ -188,39 +188,39 @@ if __name__ == "__main__":
 
     results = []
 
-    # 시나리오 1: 삼성전자 AI 기술 트렌드
+    # 시나리오 1: 삼성전자 가우스 2 AI 트렌드
     results.append(run_scenario(
-        label="① 특정 기업 — 삼성전자의 최근 AI 기술 트렌드는?",
-        query="삼성전자의 최근 AI 기술 트렌드는?",
-        expected_keywords=["삼성전자", "AI", "기술"],
+        label="① 삼성전자 — 삼성전자의 자체 AI 모델인 '삼성 가우스 2'의 특징과 주요 적용 계획을 알려줘",
+        query="삼성전자의 자체 AI 모델인 '삼성 가우스 2'의 특징과 주요 적용 계획을 알려줘",
+        expected_keywords=["삼성", "가우스"],
     ))
 
-    # 시나리오 2: 카카오 AI 서비스
+    # 시나리오 2: 카카오 카나나 AI 브랜드
     results.append(run_scenario(
-        label="② 특정 기업 — 카카오가 개발 중인 AI 서비스 목록을 알려줘",
-        query="카카오가 개발 중인 AI 서비스 목록을 알려줘",
-        expected_keywords=["카카오", "AI", "서비스"],
+        label="② 카카오 — 카카오가 공개한 AI 브랜드 '카나나(Kanana)'와 카나나 워크 등 서비스 라인업을 설명해줘",
+        query="카카오가 공개한 AI 브랜드 '카나나(Kanana)'와 카나나 워크 등 서비스 라인업을 설명해줘",
+        expected_keywords=["카카오", "카나나"],
     ))
 
-    # 시나리오 3: LLM 기술 개발 기업
+    # 시나리오 3: AWS 피지컬 AI 및 에이전틱 AI
     results.append(run_scenario(
-        label="③ 특정 기술 — 어떤 기업이 LLM 기술을 개발하나요?",
-        query="어떤 기업이 LLM 기술을 개발하나요?",
-        expected_keywords=["LLM"],
+        label="③ AWS — AWS가 강조하는 '피지컬 AI'와 '에이전틱 AI' 기술의 한국 시장 지원 및 협력 방안은 무엇인가요?",
+        query="AWS가 강조하는 '피지컬 AI'와 '에이전틱 AI' 기술의 한국 시장 지원 및 협력 방안은 무엇인가요?",
+        expected_keywords=["AWS", "피지컬", "에이전틱"],
     ))
 
-    # 시나리오 4: 최근 AI 뉴스 기사 요약
+    # 시나리오 4: 구글 I/O 제미나이 기술 변화
     results.append(run_scenario(
-        label="④ 전체 트렌드 — 최근 AI 관련 뉴스 기사를 요약해줘",
-        query="최근 AI 관련 뉴스 기사를 요약해줘",
-        expected_keywords=["AI"],
+        label="④ 구글 — 구글이 I/O 행사에서 발표한 AI 기반 검색 변화와 '제미나이(Gemini)' 기술의 적용 사례를 알려줘",
+        query="구글이 I/O 행사에서 발표한 AI 기반 검색 변화와 '제미나이(Gemini)' 기술의 적용 사례를 알려줘",
+        expected_keywords=["구글", "제미나이"],
     ))
 
     # 최종 요약
     print("=" * 60)
     print("📋 최종 요약")
     print("=" * 60)
-    labels = ["① 삼성전자 AI 트렌드", "② 카카오 AI 서비스", "③ LLM 개발 기업", "④ 최근 AI 뉴스 요약"]
+    labels = ["① 삼성 가우스 2", "② 카카오 카나나", "③ AWS 피지컬 AI", "④ 구글 제미나이"]
     for label, passed in zip(labels, results):
         print(f"  {'✅ PASS' if passed else '⚠️  PARTIAL'} | {label}")
     print()

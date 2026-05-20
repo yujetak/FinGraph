@@ -231,13 +231,30 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     border: none !important;
 }
 
+/* ── 챗봇 영역 너비 70% 제어 및 중앙 정렬 ── */
+#chat-column {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+#chat-column > div,
+#chat-column > .form {
+    width: 70% !important;
+    max-width: 960px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important; /* 컴포넌트 간 위아래 간격 축소 */
+}
+
 /* ── 챗봇 내부 Placeholder(소개글 영역) ── */
 .placeholder, [class*="placeholder"] {
     padding: 0 !important;
     overflow: auto !important;
     margin: 0 auto !important;
     width: 100% !important;
-    max-width: 920px !important;
+    max-width: 100% !important;
 }
 
 /* ── 소개글(Prose) 웰컴 보드 (독립적인 프리미엄 라운드 카드 구조) ── */
@@ -245,8 +262,8 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
-    padding: 24px !important; 
-    max-width: 920px !important;
+    padding: 10px 14px !important; /* 패딩 축소 */
+    max-width: 100% !important;
     width: 100% !important;
     margin: 0 auto !important; 
     display: block !important;
@@ -257,32 +274,33 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 .placeholder h3, [class*="placeholder"] h3 {
     color: #334155 !important; 
     font-weight: 800 !important;
-    font-size: 17.5px !important;
+    font-size: 15px !important; /* 폰트 살짝 축소 */
     margin-top: 0 !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 6px !important;
 }
 .placeholder .prose ul {
     list-style-type: none !important;
     padding-left: 0 !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 6px !important;
 }
 .placeholder .prose li {
-    margin-bottom: 6px !important; 
+    margin-bottom: 2px !important; /* 간격 축소 */
     color: #475569 !important;
-    font-size: 14.5px !important;
-    line-height: 1.55 !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
 }
 .placeholder .prose p {
-    font-size: 14.5px !important;
-    line-height: 1.55 !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 4px !important;
 }
 .placeholder .prose p:last-child {
-    font-size: 14.5px !important;
+    font-size: 12.5px !important;
     font-weight: 700 !important;
     color: #4c1d95 !important; 
     background: #f3e8ff !important; 
-    padding: 8px 16px !important;
-    border-radius: 8px !important;
+    padding: 4px 10px !important; /* 패딩 축소 */
+    border-radius: 6px !important;
     display: inline-block !important;
     margin-bottom: 0 !important;
 }
@@ -291,14 +309,14 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 [class*="examples"], .gr-samples-wrapper, .examples-container {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    gap: 6px !important; /* 갭 축소 */
     width: 100% !important;
-    max-width: 920px !important;
-    margin: 16px auto 24px auto !important;
+    max-width: 100% !important;
+    margin: 4px auto 6px auto !important; /* 마진 축소 */
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
-    padding: 24px !important; 
+    padding: 10px 14px !important; /* 패딩 축소 */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important; 
     position: relative !important;
     z-index: 1 !important;
@@ -307,9 +325,9 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
 /* 개별 버튼 디자인 (연보라색 테마 & 강력한 중앙 정렬) */
 .examples-container button, div[data-testid="chatbot"] button.example, button.example, .example-btn {
     border-radius: 8px !important;
-    padding: 16px !important;
+    padding: 10px 12px !important;
     text-align: center !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
     color: #4c1d95 !important; 
     background: #f5f3ff !important;
@@ -320,7 +338,7 @@ div[data-testid="chatbot"], .chatbot-container, .chatbot {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-height: 80px !important; 
+    min-height: 52px !important;
     width: 100% !important;
     white-space: normal !important; 
 }
@@ -390,8 +408,13 @@ textarea:focus {
 div:has(> button[class*="submit-btn"]),
 div:has(> [data-testid="submit-button"]),
 .input-container, [class*="input-container"] {
-    gap: 9px !important;
+    gap: 6px !important; /* 갭 축소 */
     align-items: center !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 4px !important; /* 위아래 간격 최적화 */
 }
 
 /* ── 챗봇 탭/라벨 숨김 ── */
@@ -404,7 +427,13 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     display: none !important;
 }
 
-/* ── 메시지 버블 기본 크기 축소 (사용자/봇 공통 세로 높이 최적화) ── */
+/* ── 메시지 버블 기본 크기 축소 (사용자/봇 공통 세로 높이 최적화 & 100% 부모 너비 채움) ── */
+.message-wrap, .message-container, div[data-testid="chatbot"] .wrapper {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
 .message,
 .message-wrap .message,
 [data-testid="user-message"],
@@ -539,6 +568,19 @@ div[data-testid="chatbot"] > div.wrapper,
 div[data-testid="chatbot"] > div.scrollbar {
     overflow-y: auto !important;
     max-height: 600px !important;
+}
+
+/* ── 모바일 화면 대응: 800px 이하에서는 100% 너비 ── */
+@media (max-width: 800px) {
+    #chat-column > div,
+    #chat-column > .form {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    [class*="examples"], .gr-samples-wrapper, .examples-container {
+        grid-template-columns: 1fr !important;
+        padding: 10px !important;
+    }
 }
 """
 

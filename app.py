@@ -334,10 +334,10 @@ interface_kwargs = {
         submit_btn="전송",
     ),
     "examples": [
-        "삼성전자의 최근 AI 기술 트렌드는?",
-        "카카오가 개발 중인 AI 서비스 목록을 알려줘",
-        "어떤 기업이 LLM 기술을 개발하나요?",
-        "최근 AI 관련 뉴스 기사를 요약해줘",
+        "삼성전자의 자체 AI 모델인 '삼성 가우스 2'의 특징과 주요 적용 계획을 알려줘",
+        "카카오가 공개한 AI 브랜드 '카나나(Kanana)'와 카나나 워크 등 서비스 라인업을 설명해줘",
+        "AWS가 강조하는 '피지컬 AI'와 '에이전틱 AI' 기술의 한국 시장 지원 및 협력 방안은 무엇인가요?",
+        "구글이 I/O 행사에서 발표한 AI 기반 검색 변화와 '제미나이(Gemini)' 기술의 적용 사례를 알려줘",
     ],
     "cache_examples": False,
 }
@@ -349,7 +349,7 @@ launch_kwargs = {
 }
 
 # 버전에 맞춘 테마 및 CSS 주입 파이프라인 (Gradio 6.x 호환성 보장)
-blocks_kwargs = {}
+blocks_kwargs: Dict[str, Any] = {}
 if gradio_major < 5:
     interface_kwargs["theme"] = theme_obj
     blocks_kwargs["theme"] = theme_obj
@@ -366,7 +366,7 @@ else:
 with gr.Blocks(**blocks_kwargs) as demo:
     # 1. 상단 글로벌 네비게이션 바 (GNB)
     gr.HTML("""
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(196, 195, 236, 0.45); background-color: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); margin: -20px -20px 20px -20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid rgba(196, 195, 236, 0.45); background-color: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); margin: -20px -20px 6px -20px;">
         <div style="font-size: 20px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 12px;">
             📈 FinGraph <span style="font-size: 14px; font-weight: 700; color: #475569;">GraphRAG Enhanced AI Terminal</span>
         </div>
@@ -381,14 +381,14 @@ with gr.Blocks(**blocks_kwargs) as demo:
             gr.HTML(stats_html)
             
         # 3. 오른쪽 컬럼: 메인 챗봇 에어리어 - 3:7 split을 위해 scale=7 설정
-        with gr.Column(scale=7, min_width=500):
+        with gr.Column(scale=7, min_width=500, elem_id="chat-column"):
             # ChatInterface without redundant titles/descriptions
-            chatbot_interface_kwargs = interface_kwargs.copy()
+            chatbot_interface_kwargs: Dict[str, Any] = interface_kwargs.copy()
             chatbot_interface_kwargs.pop("title", None)
             chatbot_interface_kwargs.pop("description", None)
             chatbot_interface_kwargs.pop("theme", None)
             
-            gr.ChatInterface(**chatbot_interface_kwargs)
+            gr.ChatInterface(**chatbot_interface_kwargs)  # type: ignore
 
 if __name__ == "__main__":
     demo.launch(**launch_kwargs)

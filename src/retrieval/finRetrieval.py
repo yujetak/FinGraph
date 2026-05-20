@@ -74,6 +74,19 @@ OPTIONAL MATCH (article)-[:MENTIONS]->(company:AICompany)
 OPTIONAL MATCH (company)-[:DEVELOPS]->(tech:AITechnology)
 OPTIONAL MATCH (company)-[:DEVELOPS]->(svc:AIService)
 OPTIONAL MATCH (article)-[:MENTIONS]->(field:AIField)
+
+// 동일 기업/기술/서비스를 언급하는 관련 기사까지 확장 탐색 (횡단 검색)
+OPTIONAL MATCH (related_article:Article)
+WHERE related_article <> article
+  AND (
+    EXISTS { (related_article)-[:MENTIONS]->(:AICompany)<-[:MENTIONS]-(article) }
+    OR EXISTS { (related_article)-[:MENTIONS]->(:AITechnology)<-[:MENTIONS]-(article) }
+    OR EXISTS { (related_article)-[:MENTIONS]->(:AIService)<-[:MENTIONS]-(article) }
+  )
+WITH
+    node, article, company, tech, svc, field,
+    collect(DISTINCT related_article.title)[..3] AS related_titles,
+    collect(DISTINCT related_article.url)[..3]   AS related_urls
 RETURN
     node.chunk             AS chunk,
     article.title          AS article_title,
@@ -82,7 +95,9 @@ RETURN
     collect(DISTINCT company.name) AS companies,
     collect(DISTINCT tech.name)    AS technologies,
     collect(DISTINCT svc.name)     AS services,
-    collect(DISTINCT field.name)   AS fields
+    collect(DISTINCT field.name)   AS fields,
+    related_titles         AS related_article_titles,
+    related_urls           AS related_article_urls
 """
 
 
@@ -141,6 +156,31 @@ CYPHER QUERY:
     RETURN a.title AS title, a.url AS url, a.published_date AS published_date, c.chunk AS chunk
     ORDER BY a.published_date DESC
     LIMIT 3""",
+    """USER INPUT: 최근 가장 관심이 높은 AI 기술이 뭐야?
+CYPHER QUERY:
+    MATCH (a:Article)-[:MENTIONS]->(t:AITechnology)
+    OPTIONAL MATCH (c:AICompany)-[:DEVELOPS]->(t)
+    WITH t, count(DISTINCT a) AS article_count, collect(DISTINCT c.name)[..3] AS companies, collect(DISTINCT a.title)[..3] AS article_titles, collect(DISTINCT a.url)[..3] AS article_urls
+    ORDER BY article_count DESC
+    RETURN t.name AS tech_name, t.description AS description, article_count, companies, article_titles, article_urls
+    LIMIT 5""",
+    """USER INPUT: AI 기술 트렌드를 분석해줘
+CYPHER QUERY:
+    MATCH (a:Article)-[:MENTIONS]->(t:AITechnology)
+    OPTIONAL MATCH (c:AICompany)-[:DEVELOPS]->(t)
+    WITH t, count(DISTINCT a) AS article_count, collect(DISTINCT c.name)[..3] AS companies, collect(DISTINCT a.title)[..2] AS article_titles, collect(DISTINCT a.url)[..2] AS article_urls
+    ORDER BY article_count DESC
+    RETURN t.name AS tech_name, article_count, companies, article_titles, article_urls
+    LIMIT 5""",
+    """USER INPUT: 현대차 또는 로봇 관련 AI 뉴스 알려줘
+CYPHER QUERY:
+    MATCH (a:Article)-[:MENTIONS]->(c:AICompany)
+    WHERE c.name CONTAINS '현대' OR c.name CONTAINS '로봇'
+    OPTIONAL MATCH (a)-[:MENTIONS]->(t:AITechnology)
+    OPTIONAL MATCH (a)-[:MENTIONS]->(s:AIService)
+    RETURN a.title AS article_title, a.url AS article_url, a.published_date AS article_date,
+           collect(DISTINCT c.name) AS companies, collect(DISTINCT t.name) AS technologies, collect(DISTINCT s.name) AS services
+    ORDER BY a.published_date DESC LIMIT 5""",
 ]
 
 # ──────────────────────────────────────────
@@ -205,7 +245,9 @@ _prompt_template = CustomRagTemplate(
 
 - **이슈 전개**: [구체적인 이슈 발생 배경 및 진행 경과]
 
-- **기업 동향**: [관련 핵심 기업들의 실물 비즈니스 움직임 및 대응 행보]
+- **기업 동향**: [관련 핵심 기업들의 실물 비즈니스 움직임 및 대응 행보. 컨텍스트에 여러 기업/기술이 있다면 모두 언급]
+
+- **기술 트렌드**: [컨텍스트에 등장하는 핵심 AI 기술들을 비교/분류하여 전체 트렌드 흐름 분석]
 
 - **인프라/사회적 요인**: [전력망 부족, 대중적 불안감, 하드웨어적 제약 사항 등 핵심 요인]
 
@@ -219,12 +261,13 @@ _prompt_template = CustomRagTemplate(
 - **실전 자소서/면접 활용 Tip**: [지원동기나 역량 기술서 작성 시 본인의 역량과 어떻게 연계하여 풀어낼지에 대한 맞춤 가이드]
 
 
-### 📰 4. 근거 뉴스 출처 (GraphRAG 추천 기사)
+### 📰 4. 근거 뉴스 출처 (GraphRAG 검색 기사)
 
-> **GraphRAG 추천 관련 뉴스 3선**
-> 1. *[기사 제목 1](기사 URL 1)* - 보도일자/언론사
-> 2. *[기사 제목 2](기사 URL 2)* - 보도일자/언론사
-> 3. *[기사 제목 3](기사 URL 3)* - 보도일자/언론사
+> 컨텍스트에 실제로 존재하는 기사 URL만 기재하고, 존재하지 않는 기사는 절대 지어내지 마세요.
+> 검색된 기사가 있는 경우 아래 형식으로 열거하고, 없으면 이 섹션을 생략하세요.
+>
+> 예시:
+> - *[기사 제목](기사 URL)* — 보도일자
 
 ---
 
@@ -276,11 +319,20 @@ class LazyGraphRAG:
             tools=[
                 vector_cypher_retriever.convert_to_tool(
                     name="vector_retriever",
-                    description="뉴스 본문의 키워드 및 의미(내용) 유사도 기반 검색. 뉴스 기사의 실제 출처(기사 제목, URL)와 관련 기업/기술/서비스 그래프를 함께 분석해 답변할 때 사용.",
+                    description=(
+                        "뉴스 본문 의미 유사도 기반 검색 + 연결된 엔티티(기업·기술·서비스·분야) 관계 그래프 탐색. "
+                        "특정 주제/기업/기술에 대해 뉴스 기사 및 관련 그래프 관계를 함께 분석할 때 사용. "
+                        "예: '현대차 AI 뉴스', '특정 기술의 적용 사례'."
+                    ),
                 ),
                 text2cypher_retriever.convert_to_tool(
                     name="text2cypher_retriever",
-                    description="자연어를 Cypher로 변환. 특정 기업 서비스 목록, 기술 보유 기업 등 구조적 질의, 또는 '최근 기사 요약' 같은 최신 전체 뉴스 검색에 사용.",
+                    description=(
+                        "자연어를 Neo4j Cypher 쿼리로 변환하여 그래프 구조를 집계·탐색. "
+                        "'가장 많이 언급된 기술', '트렌드 분석', '특정 기업의 서비스 목록', "
+                        "'어떤 기업이 X 기술을 개발하나', '최근 뉴스 요약' 등 "
+                        "집계(COUNT/ORDER BY)나 구조적 관계 질의에 반드시 사용."
+                    ),
                 ),
             ],
         )

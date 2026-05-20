@@ -122,10 +122,10 @@ def test_4_core_scenarios():
 - [x] **4. 정적/동적 방어 테스트**: Ruff/Mypy 통과, `python -c "import app"` 정상 빌드, `smoke_test_rag.py` 성공 검증
 
 ## 개발 체크리스트 (Gradio UI/UX 디테일 개선 단계)
-- [ ] **1. 화면 너비 대폭 확대**: `.gradio-container` 및 블록 레이아웃의 max-width를 대폭 확장하여 대화면 지원
-- [ ] **2. 예시 질문 최상단(챗봇 위) 이동**: CSS Flexbox order 또는 Blocks 구조 개편을 통해 예시 질문을 화면 맨 위로 고정
-- [ ] **3. 버튼 테두리 얇게 개선**: 예시 질문 버튼의 포인트 보더 두께를 축소하고 얇고 깔끔하게 미니멀리즘 디자인 적용
-- [ ] **4. 정적/동적 검증**: Ruff/Mypy 통과 및 `browser_subagent`를 통한 실제 렌더링 무결성 스크린샷 검증
+- [x] **1. 화면 너비 대폭 확대**: `.gradio-container` 및 블록 레이아웃의 max-width를 대폭 확장하여 대화면 지원
+- [x] **2. 예시 질문 최상단(챗봇 위) 이동**: CSS Flexbox order 또는 Blocks 구조 개편을 통해 예시 질문을 화면 맨 위로 고정
+- [x] **3. 버튼 테두리 얇게 개선**: 예시 질문 버튼의 포인트 보더 두께를 축소하고 얇고 깔끔하게 미니멀리즘 디자인 적용
+- [x] **4. 정적/동적 검증**: Ruff/Mypy 통과 및 `browser_subagent`를 통한 실제 렌더링 무결성 스크린샷 검증
 
 
 

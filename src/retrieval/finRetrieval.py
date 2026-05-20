@@ -12,6 +12,8 @@ app.py에서 import하여 Gradio 챗봇과 연동합니다.
 
 import logging
 import os
+from dataclasses import dataclass
+from typing import Any
 
 # Neo4j DBMS server warning (Deprecated vector queryNodes 등) 로깅 차단
 logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -29,6 +31,15 @@ from neo4j_graphrag.retrievers import (
 )
 
 dotenv.load_dotenv()
+
+
+@dataclass
+class HybridResult:
+    """GraphRAG 또는 일반 지식 기반 통합 응답 결과"""
+
+    answer: str            # 최종 답변 문자열
+    mode: str              # "graph": 그래프 검색 기반 | "general": GPT-4o 일반 지식 기반
+    retriever_result: Any = None  # RetrieverResult (mode="graph"일 때만 유효)
 
 
 def get_neo4j_driver() -> neo4j.Driver:
@@ -136,7 +147,6 @@ CYPHER QUERY:
 # 3. ToolsRetriever + GraphRAG 조립
 # ──────────────────────────────────────────
 
-from typing import Any
 
 from neo4j_graphrag.retrievers.base import Retriever
 from neo4j_graphrag.types import RawSearchResult, RetrieverResult
@@ -230,17 +240,20 @@ _prompt_template = CustomRagTemplate(
 
 class LazyGraphRAG:
     """임포트 시점에 DB 연결을 방지하고 실제 호출될 때 GraphRAG 인스턴스를 초기화하는 지연 평가 프록시"""
+
     def __init__(self) -> None:
         self._graphrag: Any = None
+        self._hybrid_retriever: Any = None  # 품질 평가용 직접 접근 가능한 리트리버
+        self._rag_llm: Any = None           # 일반 지식 답변 생성용 LLM
 
     def _init_once(self) -> None:
         if self._graphrag is not None:
             return
             
         # OpenAI 클라이언트 및 임베더 지연 초기화 (CI 크래시 방지)
-        rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
+        self._rag_llm = OpenAILLM(model_name="gpt-4o", model_params={"temperature": 0})
         embedder = OpenAIEmbeddings(model="text-embedding-3-small")
-            
+
         driver = get_neo4j_driver()
         
         vector_cypher_retriever = VectorCypherRetriever(
@@ -252,14 +265,14 @@ class LazyGraphRAG:
         
         text2cypher_retriever = Text2CypherRetriever(
             driver=driver,
-            llm=rag_llm,
+            llm=self._rag_llm,
             neo4j_schema=_get_schema(driver),
             examples=_examples,
         )
         
         tools_retriever = ToolsRetriever(
             driver=driver,
-            llm=rag_llm,
+            llm=self._rag_llm,
             tools=[
                 vector_cypher_retriever.convert_to_tool(
                     name="vector_retriever",
@@ -271,17 +284,133 @@ class LazyGraphRAG:
                 ),
             ],
         )
-        
-        hybrid_retriever = HybridFallbackRetriever(
+
+        self._hybrid_retriever = HybridFallbackRetriever(
             tools_retriever=tools_retriever,
             fallback_retriever=vector_cypher_retriever,
         )
-        
+
         self._graphrag = GraphRAG(
-            llm=rag_llm,
-            retriever=hybrid_retriever,
+            llm=self._rag_llm,
+            retriever=self._hybrid_retriever,
             prompt_template=_prompt_template,
         )
+
+    def _is_context_sufficient(self, query_text: str, history: list, retriever_result: Any) -> bool:
+        """검색된 컨텍스트가 질문 및 이전 대화 흐름에 실질적으로 도움이 되는 금융/기술 뉴스 데이터인지 GPT-4o로 판단"""
+        if retriever_result is None:
+            return False
+        if not hasattr(retriever_result, "items") or not retriever_result.items:
+            return False
+        total_content = " ".join(
+            getattr(item, "content", "") for item in retriever_result.items
+        ).strip()
+        if len(total_content) < 100:
+            return False
+
+        # GPT-4o 기반 지능적 자가 진단 (이전 대화 히스토리 및 질문의 맥락 결합 판정)
+        try:
+            assert self._rag_llm is not None
+            context_snippet = total_content[:800]
+
+            # 이전 대화 히스토리의 맥락 요약 추출 (최근 3개 메시지)
+            normalized_history = self._normalize_history(history)
+            history_summary = "없음"
+            if normalized_history:
+                history_summary = "\n".join(
+                    f"- {msg['role']}: {msg['content'][:150]}" 
+                    for msg in normalized_history[-3:]
+                )
+
+            routing_prompt = (
+                "당신은 금융/기술 트렌드 RAG 시스템의 지능형 라우터입니다.\n"
+                "사용자의 [현재 질문] 및 [최근 대화 히스토리]가 아래 제공된 [검색된 뉴스 데이터]와 의미적으로 밀접하게 연관되어 있고, "
+                "해당 데이터를 기반으로 질문에 실제 구체적이고 신뢰할 수 있는 답변을 제공할 수 있는지 평가하세요.\n\n"
+                "특히, 현재 질문이 '그거에 대해 좀 더 설명해줘'나 '자소서 팁을 더 다듬어줘'와 같은 후속 대화형 질문일 경우, "
+                "[최근 대화 히스토리]에 명시된 주요 금융/기술 트렌드 주제(예: 삼성전자 AI, 카카오 AI 등)가 "
+                "아래 뉴스 데이터의 핵심 내용과 일치하는지 종합적으로 고려해야 합니다.\n\n"
+                "만약 질문 및 대화 맥락이 아래 뉴스 데이터와 전혀 무관한 일반 상식, 일상적인 대화, 수학, 예술 등 "
+                "지식 그래프(뉴스 데이터베이스)에 없는 주제의 질문이라면 반드시 'NO'라고 답해야 합니다.\n"
+                "뉴스 팩트 데이터를 결합하여 올바른 답변을 작성할 수 있는 맥락이라면 'YES', 그렇지 않다면 'NO'라고만 답하세요.\n\n"
+                f"[최근 대화 히스토리]\n{history_summary}\n\n"
+                f"[현재 질문]\n{query_text}\n\n"
+                f"[검색된 뉴스 데이터]\n{context_snippet}\n\n"
+                "판정 (YES 또는 NO로만 답변):"
+            )
+            # 아주 빠르고 저렴한 단일 토큰 YES/NO 응답 생성
+            response = self._rag_llm.invoke(
+                input=routing_prompt,
+                model_params={"temperature": 0, "max_tokens": 5}
+            )
+            decision = str(response.content).strip().upper()
+            return "YES" in decision
+        except Exception:
+            # 예외 발생 시 안전을 위해 기존의 기본 길이 기반 판정으로 폴백
+            return len(total_content) >= 100
+
+    def _normalize_history(self, history: list) -> list:
+        """Gradio 히스토리(dict 또는 tuple 형식)를 LLM message_history 형식으로 정규화"""
+        normalized: list = []
+        for msg in history:
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                normalized.append({"role": msg["role"], "content": str(msg["content"])})
+            elif isinstance(msg, (list, tuple)) and len(msg) == 2:
+                if msg[0]:
+                    normalized.append({"role": "user", "content": str(msg[0])})
+                if msg[1]:
+                    normalized.append({"role": "assistant", "content": str(msg[1])})
+        return normalized
+
+    def _generate_general_answer(self, query_text: str, history: list) -> str:
+        """그래프 검색 결과 없이 GPT-4o 일반 지식으로 답변 생성 (대화 히스토리 반영)"""
+        assert self._rag_llm is not None
+        system_prompt = (
+            "당신은 AI 및 핀테크 기술 트렌드 전문가이자, 취업 준비생의 역량 분석을 돕는 전략 컨설턴트입니다.\n"
+            "현재 FinGraph 지식 그래프(Neo4j GraphRAG)에서 관련 뉴스 기사를 찾지 못했습니다.\n"
+            "이전 대화 맥락을 충분히 반영하고, GPT-4o의 일반 학습 데이터에 기반하여 최선을 다해 전문적으로 답변해 주세요.\n\n"
+            "[중요 지침]\n"
+            "- 실제 존재하지 않는 뉴스 링크, 날짜, 가짜 URL을 절대 생성하지 마세요.\n"
+            "- 가능하다면 취업 준비생이 면접/자소서에 활용할 수 있는 실질적인 인사이트를 포함해 주세요.\n"
+            "- 답변이 일반 AI 학습 데이터 기반임을 숨기지 말고 자연스럽게 언급하며 시작하세요."
+        )
+        normalized_history = self._normalize_history(history)
+        response = self._rag_llm.invoke(
+            input=query_text,
+            message_history=normalized_history,
+            system_instruction=system_prompt,
+        )
+        return str(response.content)
+
+    def search_with_fallback(self, query_text: str, history: list) -> HybridResult:
+        """GraphRAG 검색 -> 컨텍스트 품질 평가 -> 일반 지식 Fallback 통합 메서드.
+
+        Args:
+            query_text: 사용자 질문 텍스트
+            history:    이전 대화 히스토리 (Gradio 형식)
+
+        Returns:
+            HybridResult: 답변, 모드("graph"|"general"), RetrieverResult
+        """
+        self._init_once()
+        assert self._hybrid_retriever is not None
+        assert self._graphrag is not None
+
+        # 1단계: LLM 호출 없이 DB 쿼리만으로 검색 실행
+        retriever_result = self._hybrid_retriever.search(query_text=query_text)
+
+        # 2단계: 컨텍스트 품질 평가 후 라우팅
+        if self._is_context_sufficient(query_text, history, retriever_result):
+            # 3a. 그래프 기반 -> GraphRAG 브리핑 답변 생성
+            rag_result = self._graphrag.search(query_text=query_text)
+            return HybridResult(
+                answer=rag_result.answer,
+                mode="graph",
+                retriever_result=rag_result.retriever_result,
+            )
+        else:
+            # 3b. 일반 지식 기반 -> 히스토리 포함 GPT-4o 직접 호출
+            answer = self._generate_general_answer(query_text, history)
+            return HybridResult(answer=answer, mode="general", retriever_result=None)
 
     def search(self, *args: Any, **kwargs: Any) -> Any:
         self._init_once()

@@ -324,6 +324,12 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     display: none !important;
 }
 
+/* ── 메시지 버블 기본 크기 축소 (사용자/봇 공통 세로 높이 최적화) ── */
+.message {
+    padding: 10px 14px !important;
+    min-height: auto !important;
+}
+
 /* ── 사용자 버블 ── */
 .message.user {
     background: rgba(30,58,95,0.06) !important;
@@ -349,26 +355,32 @@ label.svelte-1ipelgc, span.svelte-1ipelgc {
     background: transparent !important;
 }
 
-/* ── 메시지 내부 보더 완전 제거 ── */
+/* ── 메시지 내부 여백 완전 제어 ── */
 .message p, .message li,
 [class*="message"] p, [class*="message"] li {
-    line-height: 1.68 !important;
-    margin-bottom: 12px !important;
+    line-height: 1.55 !important;
+    margin: 0 !important;
+    margin-bottom: 6px !important;
+    padding: 0 !important;
     border: none !important;
     border-left: none !important;
     box-shadow: none !important;
     background: transparent !important;
     color: #1e3a5f !important;
 }
+.message p:last-child, .message li:last-child {
+    margin-bottom: 0 !important;
+}
 .message blockquote, [class*="message"] blockquote {
     border: none !important;
     border-left: none !important;
     padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
 }
 .message h3, [class*="message"] h3 {
-    margin-top: 18px !important;
-    margin-bottom: 8px !important;
+    margin-top: 14px !important;
+    margin-bottom: 6px !important;
     font-weight: 800 !important;
     color: #1e3a5f !important;
 }

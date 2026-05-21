@@ -9,14 +9,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 소스코드 체크아웃
+      - name: checkout
         uses: actions/checkout@v4
 
       - name: Python 3.10 환경 구성
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip" # 의존성 설치 속도 가속
+          cache: "pip"
 
       - name: 의존성 및 개발 도구 설치
         run: |

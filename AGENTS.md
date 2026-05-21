@@ -209,3 +209,12 @@ def test_4_core_scenarios():
     3. **수직 여백 대폭 긴밀화**: GNB 아래의 바텀 마진을 `20px`에서 `6px`로 줄이고 패딩을 압축. 챗봇 내부의 컴포넌트 간 간격(`gap` 및 `margin`)과 개별 보드의 안쪽 패딩(`padding`)을 전체적으로 줄여(예: 소개글 패딩 `10px 14px`, 마진 `4px auto 6px auto` 등) 화면 내에 한눈에 쏙 들어오도록 최적화.
     4. **반응형 모바일 미디어 쿼리 갱신**: 가로 800px 이하 모바일 화면에서는 자동으로 100% 꽉 차도록 갱신하여 프리미엄 UX를 완벽하게 유지.
   - **검증**: `ruff`와 `mypy` 검사를 무오류 통과함. `python -c "import app"`으로 Gradio 웹앱 빌드 무결성을 최종 확보함.
+
+- [x] **GraphRAG 검색 기사 더미 URL 원천 교체 및 DB 반영 (2026-05-21)**:
+  - **현상**: GraphRAG 검색 결과에서 제공되는 '근거 뉴스 출처' 링크(URL)가 접근할 수 없는 가짜 네이버 뉴스 URL 형식(`news.naver.com/main/read.naver?...&oid=001&aid=11111111` 등)으로 하드코딩 되어 있어 출처 확인 불가능.
+  - **조치**:
+    1. **신한/카카오/토스/네이버페이 4대 핵심 주제**의 실존하는 공신력 있는 언론사 기사(한국경제매거진, 뉴시스, 디지털타임스, 더밸류뉴스)의 실제 URL 주소를 검증.
+    2. `inject_fintech_gold_data.py` 파일 내 하드코딩된 더미 URL 4건을 실제 URL로 교체.
+    3. Neo4j AuraDB에 접속하여 기존 적재된 `Article` 노드들의 더미 URL을 실제 URL로 직접 `MERGE` 업데이트하는 임시 스크립트를 작성하여 DB 업데이트 완료.
+    4. 코드 무결성(ruff, mypy) 및 보안 무결성(bandit High/Medium 취약점 0건) 검증 후 원격 배포(Git push).
+  - **검증**: Git pre-push hook에서 `pytest` 및 `smoke_test_rag.py` 100% PASS 확인 완료.

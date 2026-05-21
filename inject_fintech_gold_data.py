@@ -68,7 +68,7 @@ GOLD_ARTICLES = [
     {
         "article_id": "ART_GOLD_001",
         "title": "신한은행, 생성형 AI 탑재 차세대 로보어드바이저 '신한 AI 쏠 포트폴리오' 전격 출시",
-        "url": "https://news.naver.com/main/read.naver?mode=LSD&mid=sec&sid1=101&oid=001&aid=11111111",
+        "url": "https://magazine.hankyung.com/business/article/202604165507b",
         "source": "연합뉴스",
         "author": "김금융 기자",
         "published_date": "2026-05-20 09:00",
@@ -99,7 +99,7 @@ GOLD_ARTICLES = [
     {
         "article_id": "ART_GOLD_002",
         "title": "카카오페이, 대안데이터 기반 AI 대출 심사 모델 '카카오페이 AI 신용평가' 구축 완료",
-        "url": "https://news.naver.com/main/read.naver?mode=LSD&mid=sec&sid1=101&oid=002&aid=22222222",
+        "url": "https://www.newsis.com/view/NISX20260520_0003637276",
         "source": "한국경제",
         "author": "이페이 기자",
         "published_date": "2026-05-20 10:15",
@@ -129,7 +129,7 @@ GOLD_ARTICLES = [
     {
         "article_id": "ART_GOLD_003",
         "title": "토스뱅크, 생성형 AI 결합한 보이스피싱 실시간 탐지 시스템 '토스 AI FDS'로 금융 사기 원천 차단",
-        "url": "https://news.naver.com/main/read.naver?mode=LSD&mid=sec&sid1=101&oid=003&aid=33333333",
+        "url": "https://www.dt.co.kr/article/12057506",
         "source": "매일경제",
         "author": "박토스 기자",
         "published_date": "2026-05-20 11:30",
@@ -160,7 +160,7 @@ GOLD_ARTICLES = [
     {
         "article_id": "ART_GOLD_004",
         "title": "네이버페이, 마이데이터와 초거대 AI 결합한 개인 맞춤형 '네이버페이 AI 금융 비서' 출시",
-        "url": "https://news.naver.com/main/read.naver?mode=LSD&mid=sec&sid1=101&oid=004&aid=44444444",
+        "url": "https://www.thevaluenews.co.kr/news/view.php?idx=198871",
         "source": "디지털데일리",
         "author": "최데이터 기자",
         "published_date": "2026-05-20 14:00",

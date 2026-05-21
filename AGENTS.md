@@ -1,4 +1,5 @@
 ###### 참고: https://wikidocs.net/340866
+###### 참고자료(GraphRAG ToolsRetriever): https://github.com/gongwon-nayeon/graphrag-tools-retriever
 ###### 하네스 엔지니어링: Global지침, Skills와 Workflow를 모두 포함하는 지침
 ###### 개발 시작부터 배포까지 모든 것은 AGENTS.md에 기록한다.
 ###### 예를들어 개발 단계에서 체크리스트를 만들어서 개발을 할 때마다 하나씩 체크하도록 지시한다.
@@ -12,24 +13,44 @@
 
 ## 디렉토리 구조
 FinGraph/
-├── app.py                  # Gradio + LangGraph 챗봇 (HF 배포 진입점)
+├── app.py                  # Gradio + LangGraph 챗봇 (HF 배포 진입점 및 Fail-Fast 자가 진단 실행)
 ├── src/
-│   ├── references/         # 참고용 노트북 (수정 금지)
-│   ├── utils/              # 순수 함수만 (텍스트 전처리 등)
-│   ├── graphBuilder/
-│   │   ├── scrapping/      # 뉴스 크롤링
-│   │   │   ├── finScrapping.py
-│   │   │   └── Articles_*.xlsx
-│   │   └── neo4j/          # 그래프 적재
-│   │       └── finGraph.py
-│   └── retrieval/          # GraphRAG 검색
-│       └── finRetrieval.py
-├── Dockerfile
-├── requirements.txt
-├── .env.example
-├── AGENTS.md
-├── README.md
-└── .github/workflows/deploy.yml
+│   ├── __init__.py         # 패키지 초기화 파일 (Import-time 부하 방지용 빈 파일)
+│   ├── utils/              # 유틸리티 모듈 폴더
+│   │   └── ui_templates.py # Gradio GNB HTML, 프리미엄 커스텀 CSS 및 통계 카드 렌더링용 마크업 템플릿
+│   ├── graphBuilder/       # 지식 그래프 생성 엔진
+│   │   ├── scrapping/      # 뉴스 데이터 수집 레이어
+│   │   │   └── finScrapping.py # Selenium 기반 금융 AI 타겟 네이버 뉴스 실시간/동적 교차 크롤러
+│   │   └── neo4j/          # 그래프 데이터 적재 레이어
+│   │       └── finGraph.py # LLM(gpt-4o) + LangGraph 기반 점진적 엔티티/관계 추출 및 Neo4j AuraDB 적재 파이프라인
+│   └── retrieval/          # GraphRAG 검색 레이어
+│       └── finRetrieval.py # Vector / VectorCypher / Text2Cypher 하이브리드 검색 기반 GraphRAG 엔진
+├── scripts/                # 유지보수 및 데이터 적재 유틸리티 스크립트
+│   ├── delete_zero_rel_articles.py  # 관계가 없는 고립 기사 정리 (로컬 정리용)
+│   ├── inject_fintech_gold_data.py  # 포트폴리오용 골드 데이터 주입 및 Neo4j 스키마 정합성 통합 스크립트
+│   ├── plot_keywords.py             # 수집 키워드 빈도 시각화 및 분석
+│   ├── reset_db.py                  # 데이터베이스 완전 초기화 (제약 조건 재설정 포함)
+│   └── run_pipeline.py              # 파이프라인(크롤링+빌드) 순차 실행 유틸리티
+├── tests/                  # 테스트 및 검증 디렉토리
+│   ├── smoke_test_rag.py   # 그래프 연결성(밀도 3.0 이상) 및 4대 시나리오 RAG 통합 검증
+│   └── test_retrieval.py   # RAG 핵심 동작 및 하이브리드 검색기 단위 테스트
+├── Dockerfile              # Hugging Face Spaces(Gradio 구동 환경) 배포용 컨테이너 빌드 명세
+├── requirements.txt        # 프로덕션/Hugging Face 빌드 크래시 방지용 핵심 의존성 목록
+├── .env.example            # API 키 및 Neo4j 접속 정보 설정 예시 템플릿
+├── .gitignore              # references/, 백업 파일, 크롤링 엑셀(Articles_*.xlsx) 등 불필요한 파일의 업로드를 원천 차단하는 Git 필터
+├── .pre-commit-config.yaml # ruff, mypy, black 등 정적 분석을 커밋 전에 자동 수행하는 검증 훅
+├── pyproject.toml          # ruff 및 mypy 등의 개발 도구 린트 룰 구성 설정
+├── AGENTS.md               # AI 에이전트 개발 지침, 디렉토리 구조, 재발 방지 대책 및 프로젝트 히스토리 기록 (본 파일)
+├── README.md               # Hugging Face Spaces 앱 기본 설정 메타데이터 및 전체 프로젝트 개요와 아키처 명세
+├── LICENSE                 # 오픈소스 배포를 위한 MIT 정식 라이선스 파일
+└── .github/
+    └── workflows/
+        ├── ci.yml               # GitHub Actions CI 검증 워크플로우 (Ruff/Mypy/Pytest)
+        ├── daily_pipeline.yml   # 매일 새벽 1시 파이프라인 (비활성, 추후 스케줄러 재가동용 명세 장착)
+        └── deploy.yml           # HF Spaces 배포 워크플로우 (Git Push 트리거 동기화)
+
+> [!IMPORTANT]
+> **불필요한 임시 파일, 엑셀 데이터 파일(Articles_*.xlsx), 로컬 분석용 노트북(references/), 패치용 스크립트 등은 절대로 깃허브(GitHub) 저장소에 업로드되거나 배포되지 않도록 `.gitignore` 파일에 완벽하게 등록하여 저장소를 항상 깨끗하게 유지해야 합니다.**
 
 ## 코드 규칙
 - 함수명: snake_case
@@ -37,7 +58,7 @@ FinGraph/
 - 변수명: camelCase
 - 한 함수는 하나의 역할만 수행한다
 - 타입 힌트 필수
-- 모든 파일에는 주석을 달아야한다. 한글로 달아야한다.
+- **모든 파일 최상단에는 파일의 상세 역할, 작성자, 라이선스 등을 한글 주석으로 완벽하게 명시하고, 각 모듈, 클래스, 함수에도 상세한 한글 독스트링(Docstring) 및 인라인 주석을 달아야 한다.**
 
 - **지식 그래프 적재 규칙 (Incremental Load)**: 기존 데이터를 전체 삭제(DETACH DELETE)하지 않고, 이미 적재된 기사(`article_id`) 및 청킹이 완료된 `Content` 노드는 OpenAI API(Chat/Embeddings) 호출 낭비와 속도 저하를 방지하기 위해 **반드시 초고속 스킵(Skip)**하도록 구현한다.
 - **Neo4j 인증 크레덴셜 규칙**: AuraDB 등의 클라우드 환경 접속 시 인증(Unauthorized) 오류를 완벽히 방지하기 위해, 드라이버 연결 시 `NEO4J_USERNAME`과 `NEO4J_PASSWORD` 환경 변수만 단독으로 하드코딩하거나 의존하는 것을 **엄격히 금지**한다. 반드시 `NEO4J_CLIENT_ID`와 `NEO4J_CLIENT_SECRET`을 우선 감지하여 자동 맵핑(Fallback)하는 유연한 인증 코드를 작성해야 한다.
@@ -46,7 +67,7 @@ FinGraph/
 - **LLM 모델 규칙 (Model Governance)**: 엔티티/관계 추출(`finGraph.py`)에는 **반드시 `gpt-4o`** 를 사용하여 그래프 품질을 최대화한다. RAG 검색 및 답변 생성(`finRetrieval.py`), 임베딩에는 `gpt-4o-mini`와 `text-embedding-3-small`을 사용한다. 비용 절감을 이유로 엔티티/관계 추출 모델을 `gpt-4o-mini`로 다운그레이드하는 것을 **엄격히 금지**한다.
 
 ## 절대 금지
-- 'src/references/' 파일 수정 금지(참고자료)
+- 'references/' 파일 수정 금지 (참고자료, 로컬 전용)
 - Neo4j 드라이버 연결 시 `NEO4J_USERNAME`, `NEO4J_PASSWORD`만을 요구하거나 사용하는 방식의 옛날 코드 작성 절대 금지 (Connection Client Credentials 병행 매핑 필수)
 
 ## 🚨 재발 방지 및 치명적 안티 패턴 금지 (Recurring Issues Prevention)

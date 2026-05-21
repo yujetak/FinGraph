@@ -140,3 +140,11 @@ GitHub → Hugging Face Spaces 자동 배포가 `deploy.yml`을 통해 설정되
 1. **Hugging Face 토큰 발급**: Settings → Tokens에서 Write 권한 토큰 생성
 2. **GitHub Secrets 등록**: `HF_TOKEN`, `HF_REPO` (예: yuje/FinNode) 등록
 3. **HF Space Secrets 등록**: `.env` 항목(OpenAI, Neo4j 키) 동일하게 등록
+
+---
+
+## 8. 참고 자료 및 오픈소스 크레딧 (References & Credits)
+
+- **GraphRAG ToolsRetriever**: [graphrag-tools-retriever (GitHub)](https://github.com/gongwon-nayeon/graphrag-tools-retriever)
+  - 본 프로젝트의 하이브리드 검색 및 GraphRAG 라우팅(Context-Sufficient Fallback) 설계의 핵심 참고 모델로 활용되었습니다.
+- **Neo4j 및 LLM 연동 실무**: [위키독스 Neo4j GraphRAG 가이드](https://wikidocs.net/340866)
